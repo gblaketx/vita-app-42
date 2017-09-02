@@ -1,5 +1,12 @@
+"use strict";
+
+vitaApp.controller("DashboardController", ["$scope", "$resource", 
+  function($scope, $resource) {
+
+  }]);
+
 (function($) {
-  "use strict"; // Start of use strict
+
 
   // Configure tooltips for collapsed side navigation
   $('.navbar-sidenav [data-toggle="tooltip"]').tooltip({
@@ -55,7 +62,7 @@
     $('#dataTable').DataTable();
   });
 
-})(jQuery); // End of use strict
+})(jQuery);
 
 // Chart.js scripts
 // -- Set new default font family and font color to mimic Bootstrap's default styling

@@ -1,18 +1,18 @@
 var express = require('express');
 var app = express();
-var pg = require('pg');
+// var pg = require('pg');
 
 app.set('port', (process.env.PORT || 5000));
 
-app.use(express.static(__dirname + '/public'));
+app.use(express.static(__dirname));
 
 // views is directory for all template files
-app.set('views', __dirname + '/views');
-app.set('view engine', 'ejs');
+// app.set('views', __dirname + '/views');
+// app.set('view engine', 'ejs');
 
-app.get('/', function(request, response) {
-  response.render('pages/index');
-});
+// app.get('/', function(request, response) {
+//   response.render('pages/index');
+// });
 
 // app.get('/times', function(request, response) {
 //     var result = '';
