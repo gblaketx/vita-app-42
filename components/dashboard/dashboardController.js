@@ -2,12 +2,14 @@
 
 vitaApp.controller("DashboardController", ["$scope", "$resource", 
   function($scope, $resource) {
+    $scope.mapRegion = 'US'
 
     // Chart.js scripts
     // -- Set new default font family and font color to mimic Bootstrap's default styling
     Chart.defaults.global.defaultFontFamily = '-apple-system,system-ui,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif';
     Chart.defaults.global.defaultFontColor = '#292b2c';
-    google.charts.load('current', {packages: ['corechart', 'bar', 'calendar', 'geochart']});
+    google.charts.load('current', {packages: ['corechart', 'bar', 'calendar', 'geochart'],
+      'mapsApiKey': 'AIzaSyD-9tSrke72PouQMnMX-a7eZSW0jkFMBWY'});
     
     let monthNames = {
       0 : "January",
@@ -144,35 +146,6 @@ vitaApp.controller("DashboardController", ["$scope", "$resource",
 
     loadAssets();
 
-
-    var Summary = $resource('/dashboard/summary');
-    Summary.get({}, function(stats) {
-      console.log('Entry Count', stats.numEntries);
-      $scope.stats = stats;
-    });
-
-    var EntryLengths = $resource('/dashboard/entryLengths', {}, {
-      get: {method: 'get', isArray: true}
-    });
-
-    EntryLengths.get({}, function(entries) {
-      var dates = [];
-      var data = [];
-      for (var i = 0; i < entries.length; i++) {
-        var stamp = new Date(entries[i].timestamp); //TODO: way w/o date conversion?
-        var datestring = monthNames[stamp.getMonth()] + ' ' +  stamp.getDate() + ', ' + stamp.getFullYear(); 
-        dates.push(datestring);
-        data.push(entries[i].length);
-      }
-      areaChart("lengthsAreaChart", "Entry Lengths", dates, data);
-    });
-
-    var LocationCounts = $resource('/dashboard/locationCounts');
-    LocationCounts.get({}, function(locCounts) {
-      console.log(locCounts);
-    });
-
-
     function areaChart(id, hoverLabel, labels, data) {
       // -- Area Chart Example
       var ctx = document.getElementById(id);
@@ -226,30 +199,83 @@ vitaApp.controller("DashboardController", ["$scope", "$resource",
       });
     }
 
-
-
-
-    google.charts.setOnLoadCallback(drawMapChart);
-
     //TODO: Set maps API key
-    function drawMapChart() {
-      var data = google.visualization.arrayToDataTable([
-        ['Country',   'Population', 'Area Percentage'],
-        ['France',  65700000, 50],
-        ['Germany', 81890000, 27],
-        ['Poland',  38540000, 23]
-      ]);
+    function drawMapChart(input, region) {
+      var div;
+      var data = google.visualization.arrayToDataTable(input);
 
       var options = {
-        sizeAxis: { minValue: 0, maxValue: 100 },
-        region: '155', // Western Europe
+        sizeAxis: { minValue: 0, maxValue: 550, maxSize: 32 },
+        // region: '155', // Western Europe
+        region: region, // North America
         displayMode: 'markers',
-        colorAxis: {colors: ['#e7711c', '#4374e0']} // orange to blue
+        colorAxis: {colors: ['green', 'green']},
+        legend: 'none'
       };
 
-      var chart = new google.visualization.GeoChart(document.getElementById('map_chart_div'));
+      if(region === "US") {
+        div = "map_chart_us_div";
+      } else {
+        div = "map_chart_europe_div"
+      }
+
+      var chart = new google.visualization.GeoChart(document.getElementById(div));
       chart.draw(data, options);
-    }      
+    }
+
+    $(window).resize(function() {
+      if(this.resizeTO) clearTimeout(this.resizeTO);
+      this.resizeTO = setTimeout(function() {
+        $(this).trigger('resizeEnd');
+      }, 500);
+    });
+
+    $(window).on('resizeEnd', function() {
+      console.log("resize end called");
+      drawMapChart($scope.locCounts, 'US');
+      drawMapChart($scope.locCounts, '155');
+    });
+
+    var Summary = $resource('/dashboard/summary');
+    Summary.get({}, function(stats) {
+      console.log('Entry Count', stats.numEntries);
+      $scope.stats = stats;
+    });
+
+    var EntryLengths = $resource('/dashboard/entryLengths', {}, {
+      get: {method: 'get', isArray: true}
+    });
+
+    EntryLengths.get({}, function(entries) {
+      var dates = [];
+      var data = [];
+      for (var i = 0; i < entries.length; i++) {
+        var stamp = new Date(entries[i].timestamp); //TODO: way w/o date conversion?
+        var datestring = monthNames[stamp.getMonth()] + ' ' +  stamp.getDate() + ', ' + stamp.getFullYear(); 
+        dates.push(datestring);
+        data.push(entries[i].length);
+      }
+      areaChart("lengthsAreaChart", "Entry Lengths", dates, data);
+    });
+
+    var LocationCounts = $resource('/dashboard/locationCounts');
+    LocationCounts.get({}, function(locCounts) {
+
+      console.log(locCounts);
+      $scope.locCounts = locCounts["res"];
+      google.charts.setOnLoadCallback(function() { 
+        drawMapChart($scope.locCounts, 'US'); 
+        drawMapChart($scope.locCounts, '155');
+
+      });
+    });
+
+    var TopWords = $resource('/dashboard/topWords', {}, {
+      get: {method: 'get', isArray: true}
+    });
+    TopWords.get({}, function(words) {
+      console.log(words);
+    });
 
   }]);
 

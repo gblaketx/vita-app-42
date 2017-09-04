@@ -14,6 +14,10 @@ app.set('port', (process.env.PORT || 5000));
 
 app.use(express.static(__dirname));
 
+// views is directory for all template files
+// app.set('views', __dirname + '/views');
+// app.set('view engine', 'ejs');
+
 app.get('/test', function (request, response) {
   response.end(JSON.stringify('Simple web server of files from ' + __dirname));
 });
@@ -38,7 +42,7 @@ app.get('/dashboard/summary', function (request, response) {
         var maxStreak = 1
         var curStreak = 1
         var lastDate = null
-        Entry.find().sort({date: 1}).select("timestamp").stream()
+        Entry.find().sort({date: 1}).select("timestamp").cursor()
           .on('data', function(entry) {
             if(lastDate) {
               var diff = Math.ceil((entry.timestamp - lastDate) / (1000 * 3600 * 24));
@@ -106,10 +110,10 @@ app.get('/dashboard/entryLengths', function(request, response) {
 
 app.get('/dashboard/locationCounts', function(request, response) {
   console.log("Received location counts request");
-  var cityCounts = {};
+  var cityCounts = [["Address", "Count"]]
   Entry.distinct("loc.city", function(err, distinctCities) {
     if(err) {
-      console.error('Doing /dashboard/entryLengths error', err);
+      console.error('Doing /dashboard/locationCounts error', err);
       response.status(500).send(JSON.stringify(err));
       return;
     }
@@ -117,7 +121,7 @@ app.get('/dashboard/locationCounts', function(request, response) {
       Entry.findOne({"loc.city" : cityName}).select("loc").exec(function(err, entry) {
         let locstr = entry.loc.city + ', ' + entry.loc.region + ', ' + entry.loc.country;
         Entry.count({"loc.city" : cityName}, function(err, count) {
-          cityCounts[locstr] = count;
+          cityCounts.push([locstr, count]);
           done_callback(err);
         });               
       });
@@ -125,48 +129,44 @@ app.get('/dashboard/locationCounts', function(request, response) {
 
     }, function(err) {
       if(err) {
-        console.error('Doing /dashboard/entryLengths error', err);
+        console.error('Doing /dashboard/locationCounts error', err);
         response.status(500).send(JSON.stringify(err));
         return;        
       }
-      console.log(cityCounts);
-      response.end(JSON.stringify(cityCounts));
-      //TODO: Done stuff
-
+      response.end(JSON.stringify({"res" : cityCounts}));
     });  
   });
 });
 
-// views is directory for all template files
-// app.set('views', __dirname + '/views');
-// app.set('view engine', 'ejs');
 
-// app.get('/', function(request, response) {
-//   response.render('pages/index');
-// });
-
-// app.get('/times', function(request, response) {
-//     var result = '';
-//     var times = process.env.TIMES || 5;
-//     for(i= 0; i < times; i++) {
-//         result += i + ' ';
-//     }
-//     response.send(result);
-// });
-
-// app.get('/db', function(request, response) {
-//   pg.connect(process.env.DATABASE_URL, function(err, client, done) {
-//    client.query('SELECT * FROM test_table', function(err, result) {
-//       done();
-//       if(err) {
-//         console.error(err);
-//         response.send("Error " + err);
-//       } else {
-//         response.render('pages/db', {results: result.rows});
-//       }
-//      });
-//   });
-// });
+app.get('/dashboard/topWords', function(request, response) {
+  console.log("Received topWords request");
+  var counts = {};
+  Entry.find().select("tokens").cursor()
+    .on('data', function(entry) {
+      let tokens = entry.tokens;
+      for (var key in tokens) {
+        if(key in counts) {
+          counts[key] = counts[key] + tokens[key];
+        } else {
+          counts[key] = tokens[key]
+        }
+      }
+    })
+    .on('error', function(err) {
+      console.error('Doing /dashboard/topWords error', err);
+      response.status(500).send(JSON.stringify(err));
+      return;             
+    })
+    .on('end', function() {
+      counts.sort(function(a,b) {
+          if (a < b) { return 1; }
+          else if (a == b) { return 0; }
+          else { return -1; }
+      });
+      console.log(counts);
+    });
+});
 
 app.listen(app.get('port'), function() {
   console.log('Node app is running on port', app.get('port'));

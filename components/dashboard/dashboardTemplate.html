@@ -94,13 +94,23 @@
         <div class="row">
           <!-- Google Map Chart -->
           <div class="card mb-3" style="width: 100%;"> 
-          <!-- TODO: figure out sizing -->
+          <!-- TODO: Switch between Europe and US -->
             <div class="card-header">
               Entry Locations
             </div>
-            <div class="card-body">
-              <div id="map_chart_div"></div>  
-            </div>
+            <md-tabs md-dynamic-height md-border-bottom>
+              <md-tab label="United States">
+                <div class="card-body">
+                  <div id="map_chart_us_div"></div>  
+                </div>
+              </md-tab>
+              <md-tab label="Europe">
+                <div class="card-body">
+                  <div id="map_chart_europe_div"></div>  
+                </div>
+              </md-tab>
+            </md-tabs>
+
           </div>
 
         </div>

@@ -178,14 +178,10 @@ def parseFile(name):
 
         # findLongest(entries)
         # print "Entries: {}".format(len(entries))
-        for entry in entries:
-            print "\n"
-            print entry.timestamp
-            print entry.loc
         # print "Sum Tokens: {}".format(sumTokens)
         # pickle.dump(entries, outfile, -1)
-        # outfile = open('parsed_entries.json', "wb") 
-        # json.dump(entries, outfile, cls=EntryEncoder)
+        outfile = open('parsed_entries.json', "wb") 
+        json.dump(entries, outfile, cls=EntryEncoder)
 
 def findLongest(entries):
     curDate = None
@@ -213,6 +209,7 @@ def main():
     #     entries = pickle.load(f)
     #     for entry in entries: print entry
     # parseFile("smallTest.txt")
+    # parseFile("problemChildren.txt")
     parseFile("all-entries-2017-04-30.txt")
 
 
