@@ -1,4 +1,5 @@
 import gviz_api
+import sys, json
 
 class EntryGrapher:
   def __init__(self):
@@ -32,5 +33,25 @@ class EntryGrapher:
     print "Content-type: text/plain"
     print
     print dataTable.ToJSonResponse(columns_order=("date", "length"), order_by="date")
+
+  def getSummaryStats(self):
+    curDate = None
+    streak = 1
+    longest = 0
+    maxStreak = 0
+    for entry in entries:
+      if entry.getLength() > longest: longest = entry.getLength()
+      if curDate != None:
+        diff = entry.getTimestamp() - diff
+        if diff.days < 2:
+          streak += 1
+        else:
+          if streak > maxStreak: maxStreak = streak
+          streak = 1
+
+      curDate = entry.getTimestamp()
+
+
+    return {"nEntries": len(self.entries), "lenStreak": maxStreak, "longestEntry" : longest}
 
 

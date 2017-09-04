@@ -9,7 +9,7 @@
 
     <meta name="description" content="">
     <meta name="author" content="">
-    <title>Vita - Journal Insights</title>
+    <title>{{title || "Vita - Journal Insights"}}</title>
 
     <link href="./node_modules/angular-material/angular-material.css" rel="stylesheet" />
 
@@ -79,20 +79,32 @@
               <span class="nav-link-text">
                 Relate</span>
             </a>
+          </li>
+        </ul>
+        <ul class="navbar-nav sidenav-toggler">
+          <li class="nav-item">
+            <a class="nav-link text-center" id="sidenavToggler">
+              <i class="fa fa-fw fa-angle-left"></i>
+            </a>
+          </li>
+        </ul>
       </div>
+
     </nav>
 
-    <md-content flex id="content">
+    <md-content flex id="content" style="overflow: hidden;">
       <div ng-view></div>
+
+      <footer class="sticky-footer">
+        <div class="container">
+          <div class="text-center">
+            <small>Vita 2017</small>
+          </div>
+        </div>
+      </footer>
     </md-content>
 
-    <footer class="sticky-footer">
-      <div class="container">
-        <div class="text-center">
-          <small>Vita2017</small>
-        </div>
-      </div>
-    </footer>
+
 
     <!-- Scroll to Top Button -->
     <a class="scroll-to-top rounded" href="#page-top">

@@ -9,7 +9,7 @@
                   <i class="fa fa-fw fa-th-list"></i>
                 </div>
                 <div class="mr-5">
-                  Entries X
+                  Entries: {{stats.numEntries}}
                 </div>
               </div>
               <a href="#" class="card-footer text-white clearfix small z-1">
@@ -27,7 +27,7 @@
                   <i class="fa fa-fw fa-bolt"></i>
                 </div>
                 <div class="mr-5">
-                  Longest Streak X
+                  Longest Streak: {{stats.maxStreak}} Days
                 </div>
               </div>
               <a href="#" class="card-footer text-white clearfix small z-1">
@@ -45,7 +45,7 @@
                   <i class="fa fa-fw fa-pencil"></i>
                 </div>
                 <div class="mr-5">
-                  Longest Entry X
+                  Longest Entry: {{stats.longestLength}} Words
                 </div>
               </div>
               <a href="#" class="card-footer text-white clearfix small z-1">
@@ -60,10 +60,11 @@
             <div class="card text-white bg-danger o-hidden h-100">
               <div class="card-body">
                 <div class="card-body-icon">
-                  <i class="fa fa-fw fa-support"></i>
+                  <i class="fa fa-fw fa-plus-square"></i>
                 </div>
                 <div class="mr-5">
-                  13 New Tickets!
+                  Total Words: {{stats.totalWords}} 
+                  <!-- TODO: Prettyfy -->
                 </div>
               </div>
               <a href="#" class="card-footer text-white clearfix small z-1">
@@ -80,14 +81,28 @@
         <div class="card mb-3">
           <div class="card-header">
             <i class="fa fa-area-chart"></i>
-            Area Chart Example
+            Entry Lengths
           </div>
           <div class="card-body">
-            <canvas id="myAreaChart" width="100%" height="30"></canvas>
+            <canvas id="lengthsAreaChart" width="100%" height="30"></canvas>
           </div>
           <div class="card-footer small text-muted">
             Updated yesterday at 11:59 PM
           </div>
+        </div>
+
+        <div class="row">
+          <!-- Google Map Chart -->
+          <div class="card mb-3" style="width: 100%;"> 
+          <!-- TODO: figure out sizing -->
+            <div class="card-header">
+              Entry Locations
+            </div>
+            <div class="card-body">
+              <div id="map_chart_div"></div>  
+            </div>
+          </div>
+
         </div>
 
         <div class="row">
@@ -120,13 +135,7 @@
               <div class="card-footer small text-muted">
                 Updated yesterday at 11:59 PM
               </div>
-            </div>
-
-
-            <!-- Google Bar Chart -->
-            <div id="barchart_div"></div>
-
-            <div id="calendar_basic"></div>
+            </div>  
           </div>
 
           <div class="col-lg-4">
@@ -145,6 +154,9 @@
             </div>
           </div>
         </div>
+
+
+
       </div>
       <!-- /.container-fluid -->
 
