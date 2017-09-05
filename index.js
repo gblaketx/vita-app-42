@@ -18,10 +18,22 @@ app.use(express.static(__dirname));
 // app.set('views', __dirname + '/views');
 // app.set('view engine', 'ejs');
 
-app.get('/test', function (request, response) {
-  response.end(JSON.stringify('Simple web server of files from ' + __dirname));
-});
 
+
+let monthNames = {
+  0 : "January",
+  1 : "February",
+  2 : "March",
+  3 : "April",
+  4 : "May",
+  5 : "June",
+  6 : "July",
+  7 : "August",
+  8 : "September",
+  9 : "October",
+  10: "November",
+  11: "December"
+}
 // app.get('/dashboard', function (request, response) {
 
 // });
@@ -103,14 +115,22 @@ app.get('/dashboard/entryLengths', function(request, response) {
       response.status(500).send(JSON.stringify(err));
       return;
     } else {
-      response.end(JSON.stringify(entries));
+      var dates = [];
+      var data = [];
+      for (var i = 0; i < entries.length; i++) {
+        var stamp = new Date(entries[i].timestamp); //TODO: way w/o date conversion?
+        var datestring = monthNames[stamp.getMonth()] + ' ' +  stamp.getDate() + ', ' + stamp.getFullYear(); 
+        dates.push(datestring);
+        data.push(entries[i].length);
+      }
+      response.end(JSON.stringify({"dates": dates, "data": data}));
     }
   });
 });
 
 app.get('/dashboard/locationCounts', function(request, response) {
   console.log("Received location counts request");
-  var cityCounts = [["Address", "Count"]]
+  var cityCounts = [["Address", "Count"]];
   Entry.distinct("loc.city", function(err, distinctCities) {
     if(err) {
       console.error('Doing /dashboard/locationCounts error', err);
@@ -141,16 +161,28 @@ app.get('/dashboard/locationCounts', function(request, response) {
 
 app.get('/dashboard/topWords', function(request, response) {
   console.log("Received topWords request");
-  var counts = {};
-  Entry.find().select("tokens").cursor()
+  var counts = {"nouns" : {}, "adjectives": {}, "verbs": {}};
+  Entry.find().select("wordCounts").cursor()
     .on('data', function(entry) {
-      let tokens = entry.tokens;
+      let tokens = entry.wordCounts;
       for (var key in tokens) {
-        if(key in counts) {
-          counts[key] = counts[key] + tokens[key];
-        } else {
-          counts[key] = tokens[key]
+        var pos = null;
+        if(tokens[key]["pos"].match(/^NN.*/)) {
+          pos = "nouns";
+        } else if (tokens[key]["pos"].match(/^JJ.*/)) {
+          pos = "adjectives";
+        } else if (tokens[key]["pos"].match(/^V.*/)) {
+          pos = "verbs"
         }
+
+        if(pos) {
+          if(key in counts[pos]) { // Count only nouns
+            counts[pos][key]= counts[pos][key] + tokens[key]["count"];
+          } else {
+            counts[pos][key] = tokens[key]["count"];
+          }
+        }
+
       }
     })
     .on('error', function(err) {
@@ -159,12 +191,91 @@ app.get('/dashboard/topWords', function(request, response) {
       return;             
     })
     .on('end', function() {
-      counts.sort(function(a,b) {
-          if (a < b) { return 1; }
-          else if (a == b) { return 0; }
-          else { return -1; }
-      });
-      console.log(counts);
+      var res = {"nouns": [], "adjectives": [], "verbs": []};
+      for(var dict in counts) {
+        if(dict !== "nouns") {
+          counts["nouns"]["i"] += counts[dict]["i"]; //TODO: see if this can be moved to Python
+          delete counts[dict]["i"];
+          if(dict == "verbs") {
+            counts[dict]["is"] += counts[dict]["'s"];
+            delete counts[dict]["'s"];
+            counts[dict]["am"] += counts[dict]["'m"];
+            delete counts[dict]["'m"];
+          }
+        }
+        var props = [];
+        for(key in counts[dict]) {
+          props.push({word: key, count: counts[dict][key]});
+        }
+        props.sort(function(a,b) {
+            return b.count - a.count;
+        });
+
+        res[dict] = props.slice(0, 10);    
+      }
+      response.end(JSON.stringify(res));
+    });
+});
+
+app.get('/dashboard/tempTime', function(request, response) {
+  console.log("Received dashboard temperature time request");
+  Entry.find().select("timestamp weather").exec(function(err, entries) {
+    if(err) {
+      console.error('Doing /dashboard/tempTime error', err);
+      response.status(500).send(JSON.stringify(err));
+      return;
+    } else {
+      var dates = [];
+      var data = [];
+      for (var i = 0; i < entries.length; i++) {
+        if(entries[i].weather.temp !== undefined) {
+          var stamp = new Date(entries[i].timestamp); //TODO: way w/o date conversion?
+          var datestring = monthNames[stamp.getMonth()] + ' ' +  stamp.getDate() + ', ' + stamp.getFullYear(); 
+          dates.push(datestring);
+          data.push(entries[i].weather.temp);
+        }
+      }
+      response.end(JSON.stringify({"dates": dates, "data": data}));
+    }
+  }); 
+});
+
+app.get('/search/phrases/:term', function(request, response) {
+  let searchWord = request.params.term;
+  console.log("received search phrases request " + searchWord);
+  let maxPhraseLength = 5;
+  var phrases = [['Phrases']];
+  Entry.find().select("tokens").cursor()
+    .on('data', function(entry) {
+      var length = 1;
+      var tokens = entry.tokens;
+      var inPhrase = false;
+      var phrase = searchWord;
+      for (var i = 0; i < tokens.length; i++) {
+        var curWord = tokens[i]["word"];
+        if(curWord === searchWord) {
+          inPhrase = true;
+        } else if([".", ",", "(", ")", "!", "?"].indexOf(curWord) > -1 || length >= maxPhraseLength) {
+          inPhrase = false;
+          if(length > 1) phrases.push([phrase]);
+          length = 1;
+          phrase = searchWord;
+        } else if(inPhrase) {
+          phrase += ' ' + curWord;
+          length++;
+        }
+      }
+      //If loop finishes in phrase
+      if(inPhrase) phrases.push([phrase]);
+    })
+    .on('error', function(err) {
+      console.error('Doing /dashboard/phrases/' + searchWord + ' error', err);
+      response.status(500).send(JSON.stringify(err));
+      return;
+    })
+    .on('end', function() {
+      console.log(phrases);
+      response.end(JSON.stringify({"res": phrases}));
     });
 });
 

@@ -8,7 +8,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 
     <meta name="description" content="">
-    <meta name="author" content="">
+    <meta name="author" content="Gordon Blake">
     <title>{{title || "Vita - Journal Insights"}}</title>
 
     <link href="./node_modules/angular-material/angular-material.css" rel="stylesheet" />
@@ -28,7 +28,10 @@
     <link rel="stylesheet" type="text/css" href="css/main.css" />
 
     <script src="components/dashboard/dashboardController.js"></script>
-    <link rel="stylesheet" type="text/css" href="components/dashboard/dashboard.css">
+    <link rel="stylesheet" type="text/css" href="components/dashboard/dashboard.css" />
+
+    <script src="components/search/searchController.js"></script>
+    <link rel="stylesheet" type="text/css" href="components/search/search.css" />
 
     <!-- Bootstrap core CSS -->
     <link href="vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
@@ -46,35 +49,35 @@
 
     <!-- Navigation -->
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark fixed-top" id="mainNav">
-      <a class="navbar-brand" href="#">Vita</a>
+      <a class="navbar-brand" href="#!/dashboard">Vita</a>
       <button class="navbar-toggler navbar-toggler-right" type="button" data-toggle="collapse" data-target="#navbarResponsive" aria-controls="navbarResponsive" aria-expanded="false" aria-label="Toggle navigation">
         <span class="navbar-toggler-icon"></span>
       </button>
       <div class="collapse navbar-collapse" id="navbarResponsive">
         <ul class="navbar-nav navbar-sidenav" id="exampleAccordion">
           <li class="nav-item active" data-toggle="tooltip" data-placement="right" title="Dashboard">
-            <a class="nav-link" href="#">
+            <a class="nav-link" href="#!/dashboard">
               <i class="fa fa-fw fa-area-chart"></i>
               <span class="nav-link-text">
                 Dashboard</span>
             </a>
           </li>
           <li class="nav-item" data-toggle="tooltip" data-placement="right" title="Charts">
-            <a class="nav-link" href="#">
+            <a class="nav-link" href="#!/search/sleep">
               <i class="fa fa-fw fa-search"></i>
               <span class="nav-link-text">
                 Search</span>
             </a>
           </li>
           <li class="nav-item" data-toggle="tooltip" data-placement="right" title="Tables">
-            <a class="nav-link" href="#">
+            <a class="nav-link" href="#!/learn">
               <i class="fa fa-fw fa-superpowers"></i>
               <span class="nav-link-text">
                 Learn</span>
             </a>
           </li>
           <li class="nav-item" data-toggle="tooltip" data-placement="right" title="Components">
-            <a class="nav-link" href="#">
+            <a class="nav-link" href="#!/relate">
               <i class="fa fa-fw fa-exchange"></i>
               <span class="nav-link-text">
                 Relate</span>
@@ -95,13 +98,13 @@
     <md-content flex id="content" style="overflow: hidden;">
       <div ng-view></div>
 
-      <footer class="sticky-footer">
+<!--       <footer class="sticky-footer">
         <div class="container">
           <div class="text-center">
             <small>Vita 2017</small>
           </div>
         </div>
-      </footer>
+      </footer> -->
     </md-content>
 
 

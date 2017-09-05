@@ -31,6 +31,9 @@ ADDRESS_PATTERN_FULL = re.compile(
     "(?:(\d+)(?:\–\d+)? )?([^,]+), ([^,]+), ([^,]+), ([^,•]*[^\s•])( • (\d+)° (.+))?")
 ADDRESS_PATTERN_STREET = re.compile("([^,]+), ([^,]+), ([^,]+), ([^,•]*[^\s•])( • (\d+)° (.+))?")
 ADDRESS_PATTERN_CITY = re.compile("([^,]+), ([^,]+), ([^,•]*[^\s•])( • (\d+)° (.+))?")
+# IGNORE_TOKENS = [')', '(', '.', 'a', ',', 'the', 'and', 'an', 'of', 'in', 'that', 'for',
+# 'on', 'i', 'to', 'from', 'which', 'this', 'with', 'it', 'at', "n't", 'my', 'was', 'we', 'had',
+# 'so', 'as', 'about', 'were', 'are', 'is', "'s"]
 # LAT_PATTERN = re.compile("(\d+\.\d+)° (?:N|S), (\d+\.\d+)° (?:W|E)")
 #TODO: Determine groupings based on API needs
 
@@ -59,7 +62,7 @@ ADDRESS_PATTERN_CITY = re.compile("([^,]+), ([^,]+), ([^,•]*[^\s•])( • (\d
 
 class EntryEncoder(json.JSONEncoder):
     def default(self, obj):
-        if isinstance(obj, Entry) or isinstance(obj, Location):
+        if isinstance(obj, Entry) or isinstance(obj, Location) or isinstance(obj, Weather):
             return obj.__dict__
         elif isinstance(obj, datetime.datetime):
             return obj.isoformat() #TODO: May need different format for mongoose Date
@@ -68,9 +71,9 @@ class EntryEncoder(json.JSONEncoder):
 class Entry:
     def __init__(self, text, header, footer):
         self.timestamp = Entry.parseTimestamp(header)
-        self.loc = Entry.parseLoc(footer)
+        self.loc, self.weather = Entry.parseLoc(footer)
         # self.text = text #TODO: example sentences?
-        self.tokens = nltk.word_tokenize(text.decode("utf-8")) #TODO: strip punct?
+        self.tokens = Entry.tokenize(text)
         self.wordCounts = Entry.countWords(self.tokens)
         self.length = len(self.tokens)
         #TODO: S
@@ -96,19 +99,29 @@ class Entry:
 
     @staticmethod
     def countWords(tokens):
-        counts = defaultdict(lambda: 0)
+        counts = {}
         for token in tokens:
-            counts[token.lower()] += 1
+            if token["word"] in counts:
+                counts[token["word"]]["count"] += 1
+            else:
+                counts[token["word"]] = {"count": 1, "pos": token["pos"]}
         return counts
 
     @staticmethod
     def parseLoc(line):
-        addr = ADDRESS_PATTERN_FULL.match(line)
-        if addr: return Location(addr)
-        addr = ADDRESS_PATTERN_STREET.match(line)
-        if addr: return Location(addr, 4)
-        addr = ADDRESS_PATTERN_CITY.match(line)
-        if addr: return Location(addr, 3)
+        match = ADDRESS_PATTERN_FULL.match(line)
+        weather = None
+        if match: 
+            if match.group(6) != None: weather = Weather(match.group(7), match.group(8))
+            return Location(match), weather
+        match = ADDRESS_PATTERN_STREET.match(line)
+        if match: 
+            if match.group(5) != None: weather = Weather(match.group(6), match.group(7))
+            return Location(match, 4), weather
+        match = ADDRESS_PATTERN_CITY.match(line)
+        if match:
+            if match.group(4) != None: weather = Weather(match.group(5), match.group(6))
+            return Location(match, 3), weather
 
         raise RuntimeError("Footer: {} not parsing".format(line))
             #TODO: determine format based on Google Charts API
@@ -121,6 +134,24 @@ class Entry:
         if hour != 12 and res.group(8) == "PM":
             hour = int(res.group(6)) + 12            
         return datetime.datetime(int(res.group(4)), month, int(res.group(3)), hour, int(res.group(7)))
+
+    @staticmethod
+    def tokenize(text):
+        text = text.strip().lower()
+        tokens = nltk.word_tokenize(text.decode("utf-8"))
+        # tokens = [i for i in tokens if i not in IGNORE_TOKENS]
+        tokens = nltk.pos_tag(tokens)
+        tokens = [{"word": x[0], "pos": x[1]} for x in tokens]
+        return tokens
+
+
+# def ddWordCount(elem): #TODO: remove
+#     return {"count": 1, "pos": elem[1]}
+
+class Weather:
+    def __init__(self, temp, conditions):
+        self.temp = temp
+        self.conditions = conditions
 
 class Location:
     def __init__(self, match, entries = 5):
@@ -145,8 +176,6 @@ class Location:
 
     def getType(self):
         return self.type
-
-    #TODO: define getters appropriate for google charts API
 
     def __str__(self):
         return "Number: {}\nStreet:{}\nCity:{}\nRegion:{}\nCountry:{}".format(
@@ -177,8 +206,8 @@ def parseFile(name):
             next = f.readline()
 
         # findLongest(entries)
-        # print "Entries: {}".format(len(entries))
-        # print "Sum Tokens: {}".format(sumTokens)
+
+
         # pickle.dump(entries, outfile, -1)
         outfile = open('parsed_entries.json', "wb") 
         json.dump(entries, outfile, cls=EntryEncoder)

@@ -2,7 +2,7 @@
 
 var vitaApp = angular.module('vitaApp', ['ngRoute', 'ngMaterial', 'ngResource']);
 
-vitaApp.config(function ($routeProvider) {
+vitaApp.config(function ($routeProvider, $mdThemingProvider) {
     $routeProvider.
         when('/dashboard', {
             templateUrl: 'components/dashboard/dashboardTemplate.html',
@@ -23,11 +23,22 @@ vitaApp.config(function ($routeProvider) {
         otherwise({
             redirectTo: '/dashboard'
         });
+        $mdThemingProvider
+            .theme('default')
+            .primaryPalette('indigo')
+            .accentPalette('blue');
 });
 
 vitaApp.controller('MainController', ['$scope', '$resource', 
     '$rootScope', 
     function($scope, $resource, $rootScope) {
+
+        // Chart.js scripts
+        // -- Set new default font family and font color to mimic Bootstrap's default styling
+        Chart.defaults.global.defaultFontFamily = '-apple-system,system-ui,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif';
+        Chart.defaults.global.defaultFontColor = '#292b2c';
+        google.charts.load('current', {packages: ['corechart', 'bar', 'calendar', 'geochart', 'wordtree'],
+          'mapsApiKey': 'AIzaSyD-9tSrke72PouQMnMX-a7eZSW0jkFMBWY'});
 
         (function($) {
 

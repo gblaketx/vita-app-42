@@ -14,10 +14,11 @@ var Location = mongoose.model('Location', locationSchema);
 
 var entrySchema = new mongoose.Schema({
     timestamp: Date,
-    tokens: [String],
+    tokens: [{word: String, pos: String}],
     loc: locationSchema,
     wordCounts: {},
-    length: Number
+    length: Number,
+    weather: {temp : Number, conditions : String}
 }); 
 
 var Entry = mongoose.model('Entry', entrySchema);

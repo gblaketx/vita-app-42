@@ -78,7 +78,7 @@
         </div>
 
         <!-- Area Chart Example -->
-        <div class="card mb-3">
+        <div class="card">
           <div class="card-header">
             <i class="fa fa-area-chart"></i>
             Entry Lengths
@@ -89,13 +89,14 @@
           <div class="card-footer small text-muted">
             Updated yesterday at 11:59 PM
           </div>
-        </div>
+        </div>          
 
-        <div class="row">
-          <!-- Google Map Chart -->
-          <div class="card mb-3" style="width: 100%;"> 
+        <!-- Google Map Chart -->
+        <div class="row-padding">
+          <div class="card vita-resizing-map"> 
           <!-- TODO: Switch between Europe and US -->
             <div class="card-header">
+              <i class="fa fa-globe"></i>
               Entry Locations
             </div>
             <md-tabs md-dynamic-height md-border-bottom>
@@ -110,10 +111,72 @@
                 </div>
               </md-tab>
             </md-tabs>
-
-          </div>
-
+          </div>          
         </div>
+
+
+
+        <div class="row">
+          <div class="col-lg-4">
+            <div class="card mb-3">
+              <div class="card-header">
+                <i class="fa fa-trophy"></i>
+                Most Frequent Words
+              </div>
+              <md-tabs md-dynamic-height md-border-bottom>
+                <md-tab label="Nouns">
+                  <table id="top_words_table" class="table table-striped table-bordered" width="100%">
+                    <thead>
+                      <tr>
+                        <th>Word</th>
+                        <th>Frequency</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr ng-repeat="item in topWordsList.nouns">
+                        <td>{{item.word}}</td>
+                        <td>{{item.count}}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </md-tab>
+                <md-tab label="Adjectives">
+                  <table id="top_words_table" class="table table-striped table-bordered" width="100%">
+                    <thead>
+                      <tr>
+                        <th>Word</th>
+                        <th>Frequency</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr ng-repeat="item in topWordsList.adjectives">
+                        <td>{{item.word}}</td>
+                        <td>{{item.count}}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </md-tab>
+                <md-tab label="Verbs">
+                  <table id="top_words_table" class="table table-striped table-bordered" width="100%">
+                    <thead>
+                      <tr>
+                        <th>Word</th>
+                        <th>Frequency</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr ng-repeat="item in topWordsList.verbs">
+                        <td>{{item.word}}</td>
+                        <td>{{item.count}}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </md-tab>                
+              </md-tabs>
+            </div>
+          </div>
+        </div>
+
 
         <div class="row">
 
@@ -166,9 +229,22 @@
         </div>
 
 
+        <div class="card">
+          <div class="card-header">
+             <i class="fa fa-thermometer"></i>
+            Temperature
+          </div>
+          <div class="card-body">
+            <canvas id="tempsAreaChart" width="100%" height="30"></canvas>
+          </div>
+          <div class="card-footer small text-muted">
+            Updated yesterday at 11:59 PM
+          </div>
+        </div>  
+
 
       </div>
       <!-- /.container-fluid -->
-
+      <!-- TODO: Footer overlap -->
     </div>
     <!-- /.content-wrapper -->
