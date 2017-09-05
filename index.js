@@ -279,6 +279,32 @@ app.get('/search/phrases/:term', function(request, response) {
     });
 });
 
+app.get('/search/counts/:term', function(request, response) {
+  let searchWord = request.params.term;
+  console.log("Received search counts request " + searchWord);
+  var res = { "entries": {"timestamp": [], "data": []}, "count": 0, "max": 0};
+  Entry.find().select("timestamp wordCounts").cursor()
+    .on('data', function(entry) {
+      if(searchWord in entry.wordCounts) {
+        let entryCount = entry.wordCounts[searchWord].count;
+        var stamp = new Date(entry.timestamp); //TODO: way w/o date conversion?
+        var datestring = monthNames[stamp.getMonth()] + ' ' +  stamp.getDate() + ', ' + stamp.getFullYear(); 
+        res.entries.timestamp.push(datestring);
+        res.entries.data.push(entryCount);
+        res.count += entryCount;
+        if(entryCount > res.max) res.max = entryCount;
+      }
+    })
+    .on('error', function(err) {
+      console.error('Doing /dashboard/counts/' + searchWord + ' error', err);
+      response.status(500).send(JSON.stringify(err));
+      return;    
+    })
+    .on('end', function() {
+      response.end(JSON.stringify(res));
+    });
+});
+
 app.listen(app.get('port'), function() {
   console.log('Node app is running on port', app.get('port'));
 });

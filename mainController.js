@@ -26,7 +26,11 @@ vitaApp.config(function ($routeProvider, $mdThemingProvider) {
         $mdThemingProvider
             .theme('default')
             .primaryPalette('indigo')
-            .accentPalette('blue');
+            .accentPalette('blue');   
+        $mdThemingProvider
+            .theme('dark')
+            .primaryPalette('indigo')
+            .dark();
 });
 
 vitaApp.controller('MainController', ['$scope', '$resource', 
@@ -101,4 +105,69 @@ vitaApp.controller('MainController', ['$scope', '$resource',
 
         $scope.main = {};
         $scope.title = "Vita - Journal Insights";
+
+        $scope.main.drawAreaChart = function(id, hoverLabel, labels, data, maxval, color) {
+          var colors = {}
+          if(color == "red") {
+            colors["borderColor"] = "rgba(255, 51, 0, 1)";
+            colors["backgroundColor"] = "rgba(255, 51, 0, 0.2)";
+            colors["pointBackgroundColor"] = "rgba(255, 51, 0, 1)";
+            colors["pointHoverBackgroundColor"] = "rgba(255, 51, 0, 1)";
+          } else {
+            colors["borderColor"] = "rgba(2,117,216,1)";
+            colors["backgroundColor"] = "rgba(2,117,216,0.2)";
+            colors["pointBackgroundColor"] = "rgba(2,117,216,1)";
+            colors["pointHoverBackgroundColor"] = "rgba(2,117,216,1)";
+          }
+
+          var ctx = document.getElementById(id);
+          var myLineChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+              labels: labels,
+              datasets: [{
+                label: hoverLabel,
+                lineTension: 0.3,
+                backgroundColor: colors.backgroundColor,
+                borderColor: colors.borderColor,
+                pointRadius: 5,
+                pointBackgroundColor: colors.pointBackgroundColor,
+                pointBorderColor: "rgba(255,255,255,0.8)",
+                pointHoverRadius: 5,
+                pointHoverBackgroundColor: colors.pointHoverBackgroundColor,
+                pointHitRadius: 20,
+                pointBorderWidth: 2,
+                data: data,
+              }],
+            },
+            options: {
+              scales: {
+                xAxes: [{
+                  time: {
+                    unit: 'date'
+                  },
+                  gridLines: {
+                    display: false
+                  },
+                  ticks: {
+                    maxTicksLimit: 7
+                  }
+                }],
+                yAxes: [{
+                  ticks: {
+                    min: 0,
+                    max: maxval,
+                    maxTicksLimit: 5
+                  },
+                  gridLines: {
+                    color: "rgba(0, 0, 0, .125)",
+                  }
+                }],
+              },
+              legend: {
+                display: false
+              }
+            }
+          });
+        }
     }]);

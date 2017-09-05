@@ -1,10 +1,73 @@
 <div class="content-wrapper">
   <div class="container-fluid">
 
-    <md-content layout="row" layout-padding class="md-whiteframe-6dp">
-      <div class="col-lg-6">
+    <div class="row">
+      <div class="col-xl-3 col-sm-6 mb-3">
+        <div class="card text-white bg-primary o-hidden h-100">
+          <div class="card-body">
+            <div class="card-body-icon">
+              <i class="fa fa-rotate-90 fa-search"></i>
+            </div>
+            <form ng-submit="search.submitSearch()" name="searchForm" md-theme="dark">
+              <md-input-container>
+                <label>Enter a Search Term</label>
+                <input type="text" class="text-white" ng-model="search.searchbox" required ng-minlength="1">
+              </md-input-container>
+              <md-button type="submit" class="md-primary md-raised" ng-disabled="searchForm.$invalid">
+                Search
+              </md-button>
+            </form>
+          </div>
+        </div>
+      </div>
+      <div class="col-xl-3 col-sm-6 mb-3">
+        <div class="card text-white bg-warning o-hidden h-100">
+          <div class="card-body">
+            <div class="card-body-icon">
+              <i class="fa fa-fw fa-asterisk"></i>
+            </div>
+            <div class="mr-5">
+              Current Word: {{search.term}}
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="col-xl-3 col-sm-6 mb-3">
+        <div class="card text-white bg-success o-hidden h-100">
+          <div class="card-body">
+            <div class="card-body-icon">
+              <i class="fa fa-fw fa-th-list"></i>
+            </div>
+            <div class="mr-5">
+              {{search.searchWordCount}} Occurences in
+              {{search.searchWordEntryCount}} Entries
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="col-xl-3 col-sm-6 mb-3">
+        <div class="card text-white bg-danger o-hidden h-100">
+          <div class="card-body">
+            <div class="card-body-icon">
+              <i class="fa fa-fw fa-plus-square"></i>
+            </div>
+            <div class="mr-5">
+              <!-- TODO: Remove -->
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+<!--     <md-content layout="row" layout-padding class="md-whiteframe-6dp">
+      <div class="col-lg-3">
         <h1 class="md-headline">Current Word:</h1>
         <h1 class="md-display-1">{{search.term}}</h1>
+      </div>
+
+      <div class="col-lg-3">
+        <br>
+        <h1 class="md-display-1">{{search.searchWordCount}} Occurences</h1>
       </div>
 
       <form ng-submit="search.submitSearch()" class="col-lg-6" name="searchForm">
@@ -17,7 +80,7 @@
           Search
         </md-button>          
       </form>
-    </md-content>
+    </md-content> -->
 
     <div class="row">
 
@@ -33,6 +96,19 @@
         </div>
       </div>
 
+    </div>
+
+    <div class="row">
+      <div class="col-lg-12">
+        <div class="card mb-3">
+          <div class="card-header">
+            <i class="fa fa-area-chart"></i>
+            Frequency over Time
+          </div>
+          <div class="card-body">
+            <canvas id="search_frequency_chart" width="100%" height="30"></canvas>
+          </div>
+        </div>
     </div>
 
   </div>

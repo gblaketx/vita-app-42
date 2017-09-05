@@ -76,6 +76,7 @@ class Entry:
         self.tokens = Entry.tokenize(text)
         self.wordCounts = Entry.countWords(self.tokens)
         self.length = len(self.tokens)
+        self.namedEntities = Entry.extractNamedEntities(text)
         #TODO: S
         # self.sentences = nltk.tokenize. TODO
         # Timestamp is in (weekday, M, D, Y, military time) format
@@ -139,10 +140,15 @@ class Entry:
     def tokenize(text):
         text = text.strip().lower()
         tokens = nltk.word_tokenize(text.decode("utf-8"))
-        # tokens = [i for i in tokens if i not in IGNORE_TOKENS]
         tokens = nltk.pos_tag(tokens)
         tokens = [{"word": x[0], "pos": x[1]} for x in tokens]
         return tokens
+
+    @staticmethod
+    def extractNamedEntities(text):
+        chunks = nltk.ne_chunk((nltk.pos_tag(nltk.word_tokenize(text))));
+        print chunks
+        return chunks        
 
 
 # def ddWordCount(elem): #TODO: remove
@@ -209,8 +215,8 @@ def parseFile(name):
 
 
         # pickle.dump(entries, outfile, -1)
-        outfile = open('parsed_entries.json', "wb") 
-        json.dump(entries, outfile, cls=EntryEncoder)
+        # outfile = open('parsed_entries.json', "wb") 
+        # json.dump(entries, outfile, cls=EntryEncoder)
 
 def findLongest(entries):
     curDate = None
@@ -237,9 +243,9 @@ def main():
     # with open("parsed_entries.p", 'rb') as f:
     #     entries = pickle.load(f)
     #     for entry in entries: print entry
-    # parseFile("smallTest.txt")
+    parseFile("smallTest.txt")
     # parseFile("problemChildren.txt")
-    parseFile("all-entries-2017-04-30.txt")
+    # parseFile("all-entries-2017-04-30.txt")
 
 
 if __name__ == '__main__': main()

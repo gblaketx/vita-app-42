@@ -63,72 +63,6 @@ vitaApp.controller("DashboardController", ["$scope", "$resource",
 
     loadAssets();
 
-    function areaChart(id, hoverLabel, labels, data, maxval, color) {
-      var colors = {}
-      if(color == "red") {
-        colors["borderColor"] = "rgba(255, 51, 0, 1)";
-        colors["backgroundColor"] = "rgba(255, 51, 0, 0.2)";
-        colors["pointBackgroundColor"] = "rgba(255, 51, 0, 1)";
-        colors["pointHoverBackgroundColor"] = "rgba(255, 51, 0, 1)";
-      } else {
-        colors["borderColor"] = "rgba(2,117,216,1)";
-        colors["backgroundColor"] = "rgba(2,117,216,0.2)";
-        colors["pointBackgroundColor"] = "rgba(2,117,216,1)";
-        colors["pointHoverBackgroundColor"] = "rgba(2,117,216,1)";
-      }
-
-      // -- Area Chart Example
-      var ctx = document.getElementById(id);
-      var myLineChart = new Chart(ctx, {
-        type: 'line',
-        data: {
-          labels: labels,
-          datasets: [{
-            label: hoverLabel,
-            lineTension: 0.3,
-            backgroundColor: colors.backgroundColor,
-            borderColor: colors.borderColor,
-            pointRadius: 5,
-            pointBackgroundColor: colors.pointBackgroundColor,
-            pointBorderColor: "rgba(255,255,255,0.8)",
-            pointHoverRadius: 5,
-            pointHoverBackgroundColor: colors.pointHoverBackgroundColor,
-            pointHitRadius: 20,
-            pointBorderWidth: 2,
-            data: data,
-          }],
-        },
-        options: {
-          scales: {
-            xAxes: [{
-              time: {
-                unit: 'date'
-              },
-              gridLines: {
-                display: false
-              },
-              ticks: {
-                maxTicksLimit: 7
-              }
-            }],
-            yAxes: [{
-              ticks: {
-                min: 0,
-                max: maxval,
-                maxTicksLimit: 5
-              },
-              gridLines: {
-                color: "rgba(0, 0, 0, .125)",
-              }
-            }],
-          },
-          legend: {
-            display: false
-          }
-        }
-      });
-    }
-
     //TODO: Set maps API key
     function drawMapChart(input, region) {
       var div;
@@ -174,7 +108,7 @@ vitaApp.controller("DashboardController", ["$scope", "$resource",
 
     var EntryLengths = $resource('/dashboard/entryLengths');
     EntryLengths.get({}, function(entries) {
-      areaChart("lengthsAreaChart", "Entry Length", entries["dates"], entries["data"], 1100);
+      $scope.main.drawAreaChart("lengthsAreaChart", "Entry Length", entries["dates"], entries["data"], 1100);
     });
 
     var LocationCounts = $resource('/dashboard/locationCounts');
@@ -197,7 +131,7 @@ vitaApp.controller("DashboardController", ["$scope", "$resource",
 
     var TempTime = $resource('/dashboard/tempTime');
     TempTime.get({}, function(res) {
-      areaChart("tempsAreaChart", "Temperature (F)", res["dates"], res["data"], 90, "red");
+      $scope.main.drawAreaChart("tempsAreaChart", "Temperature (F)", res["dates"], res["data"], 90, "red");
     });
 
   }]);
