@@ -122,6 +122,8 @@ vitaApp.controller('MainController', ['$scope', '$resource',
 
         })(jQuery);
 
+
+
         $scope.main = {};
         $scope.title = "Vita - Journal Insights";
 
@@ -245,6 +247,22 @@ vitaApp.controller('MainController', ['$scope', '$resource',
             },
           });
         };
+
+        $scope.main.drawCalendarChart = function(id, title, data) {
+          var dataTable = new google.visualization.DataTable();
+          dataTable.addColumn({ type: 'datetime', id: 'Date' });
+          dataTable.addColumn({ type: 'number', id: 'Mentions' });
+          dataTable.addRows(data);
+
+          var chart = new google.visualization.Calendar(document.getElementById(id));
+
+          var options = {
+            title: title,
+            height: 500
+          };
+
+          chart.draw(dataTable, options);
+        }
 
         $scope.main.timestampToDate = function(timestamp) {
             let stamp = new Date(timestamp);

@@ -32,6 +32,17 @@ ADDRESS_PATTERN_FULL = re.compile(
     "(?:(\d+)(?:\–\d+)? )?([^,]+), ([^,]+), ([^,]+), ([^,•]*[^\s•])( • (\d+)° (.+))?")
 ADDRESS_PATTERN_STREET = re.compile("([^,]+), ([^,]+), ([^,]+), ([^,•]*[^\s•])( • (\d+)° (.+))?")
 ADDRESS_PATTERN_CITY = re.compile("([^,]+), ([^,]+), ([^,•]*[^\s•])( • (\d+)° (.+))?")
+# PUNCT_TOKENS = [',', '.', '(', ')', '!', '$', '%', '?', "'", '"']
+PUNCT_PATTERN = re.compile(",|\.|\(|\)|!|\$|%|\?|\"|“|”")
+NON_PERSONS = frozenset(["Anyway", "Had", "Lots", "Space", "How", "Molten", "Artichoke", "Afterward",
+    "Beyond", "Meekly", "Country", "Tears", "Dwarf", "Hmm", "Good", "Trader", "Mi", "Creo",
+    "Sal", "Elder", "Kitchen", "Forget", "Smooth", "Brie", "Church", "Lie", "Google", "Okay",
+    "Yup", "Tomorrow", "Ten", "Tis", "Basically", "Habla", "Whiny", "Busy", "Brother", "Annoy",
+    "Lessons", "Carols", "Econ", "Which", "Chorale", "Works", "Always", "Got", "Break", "Gorgonzola",
+    "Gratitute", "Sister", "Heads", "Market", "Pretty", "Ye", "Were", "Catch", "Apples", "Steam",
+    "Zion", "Cool", "Micro", "Wealthfront", "Studied", "Psych", "Juntos", "Bro", "Math", "Think",
+    "Christmas", "Stanford", "Made", "Played", "Read", "Hope", "Home", "Museum", "Hopefully", "Left",
+    "Ungh", "Twitter"])
 # IGNORE_TOKENS = [')', '(', '.', 'a', ',', 'the', 'and', 'an', 'of', 'in', 'that', 'for',
 # 'on', 'i', 'to', 'from', 'which', 'this', 'with', 'it', 'at', "n't", 'my', 'was', 'we', 'had',
 # 'so', 'as', 'about', 'were', 'are', 'is', "'s"]
@@ -114,10 +125,12 @@ class Entry:
 
         counts = {}
         for token in tokens:
-            if token["word"] in counts:
-                counts[token["word"]]["count"] += 1
+            word = PUNCT_PATTERN.sub("", token["word"])
+            if len(word) == 0: continue
+            if word in counts:
+                counts[word]["count"] += 1
             else:
-                counts[token["word"]] = {"count": 1, 
+                counts[word] = {"count": 1, 
                 "pos": token["pos"], "sentiment": {"pos": 0, "neu": 0, "neg": 0}}
         return counts
 
@@ -169,7 +182,7 @@ class Entry:
         # in ['PERSON', 'GPE', 'ORGANIZATION']
         people = set()
         for i in chunks.subtrees(filter = lambda x: x.label() == 'PERSON'):
-            if(i[0][0] in ["Anyway", "Had"]): continue
+            if(i[0][0] in NON_PERSONS): continue
             people.add(i[0][0])
         return list(people)   
 
@@ -260,7 +273,7 @@ def parseFile(name):
         # findLongest(entries)
 
         # pickle.dump(entries, outfile, -1)
-        outfile = open('parsed_entries.json', "wb") 
+        outfile = open('parsed_entries.json', "wb")
         json.dump(entries, outfile, cls=EntryEncoder)
 
 def findLongest(entries):

@@ -5,11 +5,16 @@ vitaApp.controller("DashboardController", ["$scope", "$resource",
     $scope.dashboard = {};
     $scope.dashboard.details = {"entries": false, "streak": false, "longest": false, "total": false};
 
-    function loadAssets() {
-
+    $scope.dashboard.getYearCounts = function() {
+      $scope.dashboard.details.entries = !$scope.dashboard.details.entries;
+      if($scope.dashboard.yearCounts) return;
+      var YearCounts = $resource('/dashboard/yearCounts');
+      YearCounts.get({}, function(res) {
+        console.log(res);
+        $scope.dashboard.yearCounts = res;
+        console.log(Object.keys($scope.dashboard.yearCounts).sort());
+      });
     }
-
-    loadAssets();
 
     //TODO: Set maps API key
     function drawMapChart(input, region) {
@@ -38,12 +43,12 @@ vitaApp.controller("DashboardController", ["$scope", "$resource",
     $(window).resize(function() {
       if(this.resizeTO) clearTimeout(this.resizeTO);
       this.resizeTO = setTimeout(function() {
-        $(this).trigger('resizeEnd');
+        $(this).trigger('resizeEndDash');
       }, 500);
     });
 
-    $(window).on('resizeEnd', function() {
-      console.log("resize end called");
+    $(window).on('resizeEndDash', function() {
+      console.log("resize end dash called");
       drawMapChart($scope.locCounts, 'US');
       drawMapChart($scope.locCounts, '155');
     });
@@ -76,6 +81,8 @@ vitaApp.controller("DashboardController", ["$scope", "$resource",
     PeopleCounts.get({}, function(res) {
       console.log(res);
       $scope.main.drawBarChart("commonPeopleChart", "Count", res.people, res.data, 350);
+      $scope.dashboard.totalDistinctPeople = res.totalDistinctPeople;
+      $scope.dashboard.totalPeopleCount = res.totalPeopleCount;
     });
 
     var TopWords = $resource('/dashboard/topWords');

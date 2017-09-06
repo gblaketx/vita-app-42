@@ -34,14 +34,9 @@ let monthNames = {
 }
 
 function timestampToDate(timestamp) {
-  let stamp = new Date(timestamp);
-  return(monthNames[stamp.getMonth()] + ' ' + 
-   stamp.getDate() + ', ' + stamp.getFullYear()); 
+  return(monthNames[timestamp.getMonth()] + ' ' + 
+   timestamp.getDate() + ', ' + timestamp.getFullYear()); 
 };
-
-// app.get('/dashboard', function (request, response) {
-
-// });
 
 app.get('/dashboard/summary', function (request, response) {
   console.log("Received dashboard summary request");
@@ -97,7 +92,7 @@ app.get('/dashboard/summary', function (request, response) {
         var query = Entry.findOne().sort({length:-1}).limit(1)
         query.select("timestamp loc weather namedEntities length").exec(function(err, entry) {
           if(err) return parallel_done(err);
-          stats["longestLength"] = entry.length;
+          stats["longestLength"] = entry.length.toLocaleString();
           stats["longestEntry"] = entry;
           parallel_done();
         });
@@ -110,7 +105,7 @@ app.get('/dashboard/summary', function (request, response) {
         Entry.aggregate(
           pipeline, function(err, res) {
             console.log(res);
-            stats["totalWords"] = res[0].sum;
+            stats["totalWords"] = res[0].sum.toLocaleString();
             parallel_done();
           }
         );
@@ -123,6 +118,30 @@ app.get('/dashboard/summary', function (request, response) {
       response.end(JSON.stringify(stats));
     }
   });
+
+});
+
+app.get('/dashboard/yearCounts', function(request, response) {
+  console.log("Received yearCounts request");
+  var pipeline = [
+    { $project: {year: {$year: "$timestamp"}} },
+    { $group: { _id: "$year", count: {$sum: 1}} }
+  ];
+  Entry.aggregate(
+    pipeline, function(err, res) {
+      if(err) {
+        console.error('Doing /dashboard/yearCounts error: ', err);
+        response.status(500).send(JSON.stringify(err));
+      } else{
+        var yearCounts = {};
+        for (var i = 0; i < res.length; i++) {
+          yearCounts[res[i]._id] = res[i].count;
+        }
+
+        response.end(JSON.stringify(yearCounts));
+      }
+    }
+  );
 
 });
 
@@ -286,12 +305,14 @@ app.get('/dashboard/tempTime', function(request, response) {
 app.get('/dashboard/people', function(request, response) {
   console.log("Received dashboard people request");
   var peopleCounts = {};
+  var totalPeopleCount = 0;
   Entry.find().select("namedEntities wordCounts").cursor()
     .on('data', function(entry) {
       let people = entry.namedEntities;
       for (var i = 0; i < people.length; i++) {
         let personKey = people[i].toLowerCase();
         if(personKey in entry.wordCounts) {
+          totalPeopleCount += entry.wordCounts[personKey].count;
           if(people[i] in peopleCounts) {
             peopleCounts[people[i]] += entry.wordCounts[personKey].count;
           } else {
@@ -315,7 +336,11 @@ app.get('/dashboard/people', function(request, response) {
           return b.count - a.count;
       });
       var props = props.slice(0,8);
-      var res = {"people" : [], "data": []};
+      var res = {"people" : [], "data": [], 
+        "totalDistinctPeople": Object.keys(peopleCounts).length.toLocaleString(), 
+        "totalPeopleCount": totalPeopleCount.toLocaleString()
+      };
+
       for (var i = 0; i < props.length; i++) {
         res.people.push(props[i].person);
         res.data.push(props[i].count);
@@ -359,7 +384,6 @@ app.get('/search/phrases/:term', function(request, response) {
       return;
     })
     .on('end', function() {
-      console.log(phrases);
       response.end(JSON.stringify({"res": phrases}));
     });
 });
@@ -367,16 +391,14 @@ app.get('/search/phrases/:term', function(request, response) {
 app.get('/search/counts/:term', function(request, response) {
   let searchWord = request.params.term;
   console.log("Received search counts request " + searchWord);
-  var res = { "entries": {"timestamp": [], "data": []}, "count": 0, "max": 0};
+  // var res = { "entries": {"timestamp": [], "data": []}, "count": 0, "max": 0};
+  var res = {"entries": [], "count": 0, "max": 0};
   var sentiment = {"pos": 0, "neu": 0 , "neg": 0};
   Entry.find().select("timestamp wordCounts").cursor()
     .on('data', function(entry) {
       if(searchWord in entry.wordCounts) {
         let entryCount = entry.wordCounts[searchWord].count;
-        var stamp = new Date(entry.timestamp); //TODO: way w/o date conversion?
-        var datestring = monthNames[stamp.getMonth()] + ' ' +  stamp.getDate() + ', ' + stamp.getFullYear(); 
-        res.entries.timestamp.push(datestring);
-        res.entries.data.push(entryCount);
+        res.entries.push([entry.timestamp, entryCount]);
         res.count += entryCount;
         if(entryCount > res.max) res.max = entryCount;
         let entrySentiment = entry.wordCounts[searchWord].sentiment;
@@ -395,6 +417,7 @@ app.get('/search/counts/:term', function(request, response) {
         "labels" : ["Positive", "Negative", "Neutral"],
         "data" : [sentiment.pos, sentiment.neg, sentiment.neu]
       };
+      console.log(res);
       response.end(JSON.stringify(res));
     });
 });
