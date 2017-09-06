@@ -2,63 +2,11 @@
 
 vitaApp.controller("DashboardController", ["$scope", "$resource", 
   function($scope, $resource) {
+    $scope.dashboard = {};
+    $scope.dashboard.details = {"entries": false, "streak": false, "longest": false, "total": false};
 
     function loadAssets() {
-      // -- Bar Chart Example
-      var ctx = document.getElementById("myBarChart");
-      var myLineChart = new Chart(ctx, {
-        type: 'bar',
-        data: {
-          labels: ["January", "February", "March", "April", "May", "June"],
-          datasets: [{
-            label: "Revenue",
-            backgroundColor: "rgba(2,117,216,1)",
-            borderColor: "rgba(2,117,216,1)",
-            data: [4215, 5312, 6251, 7841, 9821, 14984],
-          }],
-        },
-        options: {
-          scales: {
-            xAxes: [{
-              time: {
-                unit: 'month'
-              },
-              gridLines: {
-                display: false
-              },
-              ticks: {
-                maxTicksLimit: 6
-              }
-            }],
-            yAxes: [{
-              ticks: {
-                min: 0,
-                max: 15000,
-                maxTicksLimit: 5
-              },
-              gridLines: {
-                display: true
-              }
-            }],
-          },
-          legend: {
-            display: false
-          }
-        }
-      });
 
-      // -- Pie Chart Example
-      var ctx = document.getElementById("myPieChart");
-      var myPieChart = new Chart(ctx, {
-        type: 'pie',
-        data: {
-          labels: ["Blue", "Red", "Yellow", "Green"],
-          datasets: [{
-            data: [12.21, 15.58, 11.25, 8.32],
-            backgroundColor: ['#007bff', '#dc3545', '#ffc107', '#28a745'],
-          }],
-        },
-      });
     }
 
     loadAssets();
@@ -103,6 +51,7 @@ vitaApp.controller("DashboardController", ["$scope", "$resource",
     var Summary = $resource('/dashboard/summary');
     Summary.get({}, function(stats) {
       console.log('Entry Count', stats.numEntries);
+      stats.longestEntry.timestamp = $scope.main.timestampToDate(stats.longestEntry.timestamp);
       $scope.stats = stats;
     });
 
@@ -123,6 +72,12 @@ vitaApp.controller("DashboardController", ["$scope", "$resource",
       });
     });
 
+    var PeopleCounts = $resource('/dashboard/people');
+    PeopleCounts.get({}, function(res) {
+      console.log(res);
+      $scope.main.drawBarChart("commonPeopleChart", "Count", res.people, res.data, 350);
+    });
+
     var TopWords = $resource('/dashboard/topWords');
     TopWords.get({}, function(words) {
       console.log(words);
@@ -132,6 +87,12 @@ vitaApp.controller("DashboardController", ["$scope", "$resource",
     var TempTime = $resource('/dashboard/tempTime');
     TempTime.get({}, function(res) {
       $scope.main.drawAreaChart("tempsAreaChart", "Temperature (F)", res["dates"], res["data"], 90, "red");
+    });
+
+    var Sentiment = $resource('/dashboard/sentiment');
+    Sentiment.get({}, function(res) {
+      console.log(res);
+      $scope.main.drawPieChart("sentimentPieChart", res.labels, res.data);
     });
 
   }]);

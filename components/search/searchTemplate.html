@@ -20,43 +20,44 @@
           </div>
         </div>
       </div>
-      <div class="col-xl-3 col-sm-6 mb-3">
+      
+      <div ng-show="search.term" class="col-xl-3 col-sm-6 mb-3">
         <div class="card text-white bg-warning o-hidden h-100">
           <div class="card-body">
             <div class="card-body-icon">
               <i class="fa fa-fw fa-asterisk"></i>
             </div>
-            <div class="mr-5">
+            <div class="mr-5 md-title">
               Current Word: {{search.term}}
             </div>
           </div>
         </div>
       </div>
-      <div class="col-xl-3 col-sm-6 mb-3">
+      <div ng-show="search.term" class="col-xl-3 col-sm-6 mb-3">
         <div class="card text-white bg-success o-hidden h-100">
           <div class="card-body">
             <div class="card-body-icon">
               <i class="fa fa-fw fa-th-list"></i>
             </div>
-            <div class="mr-5">
+            <div class="mr-5 md-title">
               {{search.searchWordCount}} Occurences in
               {{search.searchWordEntryCount}} Entries
             </div>
           </div>
         </div>
       </div>
-      <div class="col-xl-3 col-sm-6 mb-3">
+      <div ng-show="search.term" class="col-xl-3 col-sm-6 mb-3">
         <div class="card text-white bg-danger o-hidden h-100">
           <div class="card-body">
             <div class="card-body-icon">
               <i class="fa fa-fw fa-plus-square"></i>
             </div>
-            <div class="mr-5">
+            <div class="mr-5 md-title">
               <!-- TODO: Remove -->
             </div>
           </div>
         </div>
-      </div>
+      </div>        
     </div>
 
 <!--     <md-content layout="row" layout-padding class="md-whiteframe-6dp">
@@ -82,9 +83,8 @@
       </form>
     </md-content> -->
 
-    <div class="row">
-
-      <div class="col-lg-12">
+    <div ng-show="search.term"  class="row">
+      <div class="col-lg-8">
         <div class="card mb-3">
           <div class="card-header">
             <i class="fa fa-tree"></i>
@@ -96,9 +96,25 @@
         </div>
       </div>
 
+      <div class="col-lg-4">
+        <div class="card mb-3">
+          <div class="card-header">
+            <i class="fa fa-pie-chart"></i>
+            Sentiment of Sentences with Term
+          </div>
+          <div class="card-body">
+            <canvas id="searchSentimentPieChart" width="100%" height="100"></canvas>
+          </div>
+          <div class="card-footer small text-muted">
+            Updated yesterday at 11:59 PM
+          </div>
+        </div>
+      </div>
     </div>
 
-    <div class="row">
+    </div>
+
+    <div ng-show="search.term"  class="row">
       <div class="col-lg-12">
         <div class="card mb-3">
           <div class="card-header">

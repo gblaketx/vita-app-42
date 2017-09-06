@@ -40,9 +40,11 @@ vitaApp.controller("SearchController", ["$scope", "$resource", "$routeParams", "
         $scope.search.searchWordEntryCount = res.entries.data.length;
         $scope.main.drawAreaChart("search_frequency_chart", "Count", 
           res.entries.timestamp, res.entries.data, res.max);
+        $scope.main.drawPieChart("searchSentimentPieChart", 
+          res.sentiment.labels, res.sentiment.data);
       });      
     }
 
-    if($scope.search.term !== "") loadModels(); //TODO: probably only want to load on search
+    if($scope.search.term) loadModels(); //TODO: probably only want to load on search
 
 }]);

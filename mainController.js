@@ -8,6 +8,10 @@ vitaApp.config(function ($routeProvider, $mdThemingProvider) {
             templateUrl: 'components/dashboard/dashboardTemplate.html',
             controller: 'DashboardController'
         }).
+        when('/search', {
+            templateUrl: 'components/search/searchTemplate.html',
+            controller: 'SearchController'
+        }).
         when('/search/:term', {
             templateUrl: 'components/search/searchTemplate.html',
             controller: 'SearchController'
@@ -36,6 +40,21 @@ vitaApp.config(function ($routeProvider, $mdThemingProvider) {
 vitaApp.controller('MainController', ['$scope', '$resource', 
     '$rootScope', 
     function($scope, $resource, $rootScope) {
+
+        let monthNames = {
+          0 : "January",
+          1 : "February",
+          2 : "March",
+          3 : "April",
+          4 : "May",
+          5 : "June",
+          6 : "July",
+          7 : "August",
+          8 : "September",
+          9 : "October",
+          10: "November",
+          11: "December"
+        };
 
         // Chart.js scripts
         // -- Set new default font family and font color to mimic Bootstrap's default styling
@@ -169,5 +188,68 @@ vitaApp.controller('MainController', ['$scope', '$resource',
               }
             }
           });
-        }
+        };
+
+        $scope.main.drawBarChart = function(id, hoverLabel, labels, data, maxval) {
+          var ctx = document.getElementById(id);
+            var myLineChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                  labels: labels,
+                  datasets: [{
+                    label: hoverLabel,
+                    backgroundColor: "rgba(2,117,216,1)",
+                    borderColor: "rgba(2,117,216,1)",
+                    data: data,
+                  }],
+                },
+                options: {
+                  scales: {
+                    xAxes: [{
+                      gridLines: {
+                        display: false
+                      },
+                      ticks: {
+                        maxTicksLimit: 8
+                      }
+                    }],
+                    yAxes: [{
+                      ticks: {
+                        min: 0,
+                        max: maxval,
+                        maxTicksLimit: 5
+                      },
+                      gridLines: {
+                        display: true
+                      }
+                    }],
+                  },
+                  legend: {
+                    display: false
+                  }
+                }
+            });
+        };
+
+        $scope.main.drawPieChart = function(id, labels, data) {
+          // -- Pie Chart Example
+          var ctx = document.getElementById(id);
+          var myPieChart = new Chart(ctx, {
+            type: 'pie',
+            data: {
+              labels: labels,
+              datasets: [{
+                data: data,
+                backgroundColor: ['#007bff', '#dc3545', '#ffc107', '#28a745'],
+              }],
+            },
+          });
+        };
+
+        $scope.main.timestampToDate = function(timestamp) {
+            let stamp = new Date(timestamp);
+            return(monthNames[stamp.getMonth()] + ' ' + 
+             stamp.getDate() + ', ' + stamp.getFullYear()); 
+        };
+
     }]);

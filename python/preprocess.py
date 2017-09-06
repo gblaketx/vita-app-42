@@ -5,6 +5,7 @@
 # Author: Gordon Blake
 
 import re, datetime, os, nltk, json
+from nltk.sentiment.vader import SentimentIntensityAnalyzer
 # import cPickle as pickle
 from collections import defaultdict
 
@@ -60,6 +61,8 @@ ADDRESS_PATTERN_CITY = re.compile("([^,]+), ([^,]+), ([^,•]*[^\s•])( • (\d
 #     def __str__(self):
 #         return "{} {} : {} Entries".format(self.month, self.year, self.getNumEntries())
 
+sid = SentimentIntensityAnalyzer()
+
 class EntryEncoder(json.JSONEncoder):
     def default(self, obj):
         if isinstance(obj, Entry) or isinstance(obj, Location) or isinstance(obj, Weather):
@@ -77,6 +80,7 @@ class Entry:
         self.wordCounts = Entry.countWords(self.tokens)
         self.length = len(self.tokens)
         self.namedEntities = Entry.extractNamedEntities(text)
+        self.sentiment = self.extractSentenceSentiment(text)
         #TODO: S
         # self.sentences = nltk.tokenize. TODO
         # Timestamp is in (weekday, M, D, Y, military time) format
@@ -100,12 +104,21 @@ class Entry:
 
     @staticmethod
     def countWords(tokens):
+        """
+            Word attributes are:
+                count: Number of times word appears in entry
+                pos: part of speech of word
+                sentiment: number of sentences with the word with pos, neutral, and neg
+                    sentiment in the entry
+        """
+
         counts = {}
         for token in tokens:
             if token["word"] in counts:
                 counts[token["word"]]["count"] += 1
             else:
-                counts[token["word"]] = {"count": 1, "pos": token["pos"]}
+                counts[token["word"]] = {"count": 1, 
+                "pos": token["pos"], "sentiment": {"pos": 0, "neu": 0, "neg": 0}}
         return counts
 
     @staticmethod
@@ -146,10 +159,43 @@ class Entry:
 
     @staticmethod
     def extractNamedEntities(text):
-        chunks = nltk.ne_chunk((nltk.pos_tag(nltk.word_tokenize(text))));
-        print chunks
-        return chunks        
+        tags = nltk.pos_tag(nltk.word_tokenize(text.decode("utf-8")))
+        # for entry in tags:
+        #     print entry[0]
+        #     entry[0].decode("utf-8")
+        tags = [(x[0].encode("ascii", "ignore"), x[1]) for x in tags]
+        chunks = nltk.ne_chunk(tags);
+        # print chunks
+        # in ['PERSON', 'GPE', 'ORGANIZATION']
+        people = set()
+        for i in chunks.subtrees(filter = lambda x: x.label() == 'PERSON'):
+            if(i[0][0] in ["Anyway", "Had"]): continue
+            people.add(i[0][0])
+        return list(people)   
 
+    def extractSentenceSentiment(self, text):
+        sentences = nltk.sent_tokenize(text.decode("utf-8"))
+        entrySentiment = {"pos": 0, "neu": 0, "neg": 0, "score": 0}
+        for sentence in sentences:
+            scores = sid.polarity_scores(sentence)
+            tokens = nltk.word_tokenize(sentence.strip().lower())
+
+
+            entrySentiment["score"] += scores["compound"]
+            if scores["compound"] > 0:
+                sentiment = "pos"
+            elif scores["compound"] < 0: 
+                sentiment = "neg"
+            else:
+                sentiment = "neu"
+
+            entrySentiment[sentiment] += 1
+
+            for word in tokens:
+                if word in self.wordCounts:
+                    self.wordCounts[word]["sentiment"][sentiment] += 1
+
+        return entrySentiment  
 
 # def ddWordCount(elem): #TODO: remove
 #     return {"count": 1, "pos": elem[1]}
@@ -213,10 +259,9 @@ def parseFile(name):
 
         # findLongest(entries)
 
-
         # pickle.dump(entries, outfile, -1)
-        # outfile = open('parsed_entries.json', "wb") 
-        # json.dump(entries, outfile, cls=EntryEncoder)
+        outfile = open('parsed_entries.json', "wb") 
+        json.dump(entries, outfile, cls=EntryEncoder)
 
 def findLongest(entries):
     curDate = None
@@ -243,9 +288,8 @@ def main():
     # with open("parsed_entries.p", 'rb') as f:
     #     entries = pickle.load(f)
     #     for entry in entries: print entry
-    parseFile("smallTest.txt")
     # parseFile("problemChildren.txt")
-    # parseFile("all-entries-2017-04-30.txt")
+    parseFile("all-entries-2017-04-30.txt")
 
 
 if __name__ == '__main__': main()

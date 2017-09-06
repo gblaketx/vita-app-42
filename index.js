@@ -18,8 +18,6 @@ app.use(express.static(__dirname));
 // app.set('views', __dirname + '/views');
 // app.set('view engine', 'ejs');
 
-
-
 let monthNames = {
   0 : "January",
   1 : "February",
@@ -34,6 +32,13 @@ let monthNames = {
   10: "November",
   11: "December"
 }
+
+function timestampToDate(timestamp) {
+  let stamp = new Date(timestamp);
+  return(monthNames[stamp.getMonth()] + ' ' + 
+   stamp.getDate() + ', ' + stamp.getFullYear()); 
+};
+
 // app.get('/dashboard', function (request, response) {
 
 // });
@@ -51,9 +56,12 @@ app.get('/dashboard/summary', function (request, response) {
         });
       },
       function(parallel_done) {
-        var maxStreak = 1
-        var curStreak = 1
-        var lastDate = null
+        var maxStreak = 1;
+        var curStreak = 1;
+        var lastDate = null;
+        var streakStart = null;
+        var curStreakStart = null;
+        var streakEnd = null;
         Entry.find().sort({date: 1}).select("timestamp").cursor()
           .on('data', function(entry) {
             if(lastDate) {
@@ -61,9 +69,16 @@ app.get('/dashboard/summary', function (request, response) {
               if(diff <= 2) {
                 curStreak += 1;
               } else {
-                if(curStreak > maxStreak) maxStreak = curStreak;
+                if(curStreak > maxStreak)  {
+                  streakStart = timestampToDate(curStreakStart);
+                  streakEnd = timestampToDate(lastDate);
+                  maxStreak = curStreak;
+                }
                 curStreak = 1;
+                curStreakStart = entry.timestamp;
               }
+            } else {
+              curStreakStart = entry.timestamp;
             }
             lastDate = entry.timestamp;
           })
@@ -71,15 +86,19 @@ app.get('/dashboard/summary', function (request, response) {
             return parallel_done(err);
           })
           .on('end', function() {
-            stats.maxStreak = maxStreak;
+            stats.streak = {}
+            stats.streak.numDays = maxStreak;
+            stats.streak.start = streakStart;
+            stats.streak.end = streakEnd;
             parallel_done();
           });
       },
       function(parallel_done) {
         var query = Entry.findOne().sort({length:-1}).limit(1)
-        query.select("length").exec(function(err, entry) {
+        query.select("timestamp loc weather namedEntities length").exec(function(err, entry) {
           if(err) return parallel_done(err);
           stats["longestLength"] = entry.length;
+          stats["longestEntry"] = entry;
           parallel_done();
         });
       },
@@ -107,6 +126,30 @@ app.get('/dashboard/summary', function (request, response) {
 
 });
 
+app.get('/dashboard/sentiment', function(request, response) {
+  console.log('Received dashboard/sentiment request');
+  var counts = {"pos": 0, "neu": 0, "neg": 0};
+  Entry.find().select("sentiment").cursor()
+    .on('data', function(entry) {
+      counts.pos += entry.sentiment.pos;
+      counts.neu += entry.sentiment.neu;
+      counts.neg += entry.sentiment.neg;
+    })
+    .on('err', function(err) {
+      console.error('Doing /dashboard/sentiment error', err);
+      response.status(500).send(JSON.stringify(err));
+      return;
+    })
+    .on('end', function() {
+      var res = {
+        "labels": ["Positive", "Negative", "Neutral"], 
+        "data": [counts.pos, counts.neg, counts.neu]
+      };
+      console.log(res);
+      response.end(JSON.stringify(res));
+    });
+});
+
 app.get('/dashboard/entryLengths', function(request, response) {
   console.log("Received dashboard entry lengths request");
   Entry.find().select("timestamp length").exec(function(err, entries) {
@@ -118,9 +161,9 @@ app.get('/dashboard/entryLengths', function(request, response) {
       var dates = [];
       var data = [];
       for (var i = 0; i < entries.length; i++) {
-        var stamp = new Date(entries[i].timestamp); //TODO: way w/o date conversion?
-        var datestring = monthNames[stamp.getMonth()] + ' ' +  stamp.getDate() + ', ' + stamp.getFullYear(); 
-        dates.push(datestring);
+        // var stamp = new Date(entries[i].timestamp); //TODO: way w/o date conversion?
+        // var datestring = monthNames[stamp.getMonth()] + ' ' +  stamp.getDate() + ', ' + stamp.getFullYear(); 
+        dates.push(timestampToDate(entries[i].timestamp));
         data.push(entries[i].length);
       }
       response.end(JSON.stringify({"dates": dates, "data": data}));
@@ -208,7 +251,7 @@ app.get('/dashboard/topWords', function(request, response) {
           props.push({word: key, count: counts[dict][key]});
         }
         props.sort(function(a,b) {
-            return b.count - a.count;
+          return b.count - a.count;
         });
 
         res[dict] = props.slice(0, 10);    
@@ -229,15 +272,57 @@ app.get('/dashboard/tempTime', function(request, response) {
       var data = [];
       for (var i = 0; i < entries.length; i++) {
         if(entries[i].weather.temp !== undefined) {
-          var stamp = new Date(entries[i].timestamp); //TODO: way w/o date conversion?
-          var datestring = monthNames[stamp.getMonth()] + ' ' +  stamp.getDate() + ', ' + stamp.getFullYear(); 
-          dates.push(datestring);
+          // var stamp = new Date(entries[i].timestamp); //TODO: way w/o date conversion?
+          // var datestring = monthNames[stamp.getMonth()] + ' ' +  stamp.getDate() + ', ' + stamp.getFullYear();
+          dates.push(timestampToDate(entries[i].timestamp));
           data.push(entries[i].weather.temp);
         }
       }
       response.end(JSON.stringify({"dates": dates, "data": data}));
     }
   }); 
+});
+
+app.get('/dashboard/people', function(request, response) {
+  console.log("Received dashboard people request");
+  var peopleCounts = {};
+  Entry.find().select("namedEntities wordCounts").cursor()
+    .on('data', function(entry) {
+      let people = entry.namedEntities;
+      for (var i = 0; i < people.length; i++) {
+        let personKey = people[i].toLowerCase();
+        if(personKey in entry.wordCounts) {
+          if(people[i] in peopleCounts) {
+            peopleCounts[people[i]] += entry.wordCounts[personKey].count;
+          } else {
+            peopleCounts[people[i]] = entry.wordCounts[personKey].count;
+          }         
+        }
+      }
+    })
+    .on('error', function(err) {
+      console.error('Doing /dashboard/people error', err);
+      response.status(500).send(JSON.stringify(err));
+      return;
+    })
+    .on('end', function() {
+
+      var props = [];
+      for(key in peopleCounts) {
+        props.push({person: key, count: peopleCounts[key]});
+      }
+      props.sort(function(a,b) {
+          return b.count - a.count;
+      });
+      var props = props.slice(0,8);
+      var res = {"people" : [], "data": []};
+      for (var i = 0; i < props.length; i++) {
+        res.people.push(props[i].person);
+        res.data.push(props[i].count);
+      }
+      console.log();
+      response.end(JSON.stringify(res));
+    });
 });
 
 app.get('/search/phrases/:term', function(request, response) {
@@ -283,6 +368,7 @@ app.get('/search/counts/:term', function(request, response) {
   let searchWord = request.params.term;
   console.log("Received search counts request " + searchWord);
   var res = { "entries": {"timestamp": [], "data": []}, "count": 0, "max": 0};
+  var sentiment = {"pos": 0, "neu": 0 , "neg": 0};
   Entry.find().select("timestamp wordCounts").cursor()
     .on('data', function(entry) {
       if(searchWord in entry.wordCounts) {
@@ -293,6 +379,10 @@ app.get('/search/counts/:term', function(request, response) {
         res.entries.data.push(entryCount);
         res.count += entryCount;
         if(entryCount > res.max) res.max = entryCount;
+        let entrySentiment = entry.wordCounts[searchWord].sentiment;
+        sentiment.pos += entrySentiment.pos;
+        sentiment.neu += entrySentiment.neu;
+        sentiment.neg += entrySentiment.neg;
       }
     })
     .on('error', function(err) {
@@ -301,6 +391,10 @@ app.get('/search/counts/:term', function(request, response) {
       return;    
     })
     .on('end', function() {
+      res.sentiment = {
+        "labels" : ["Positive", "Negative", "Neutral"],
+        "data" : [sentiment.pos, sentiment.neg, sentiment.neu]
+      };
       response.end(JSON.stringify(res));
     });
 });
