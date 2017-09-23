@@ -38,8 +38,8 @@ vitaApp.config(function ($routeProvider, $mdThemingProvider) {
 });
 
 vitaApp.controller('MainController', ['$scope', '$resource', 
-    '$rootScope', 
-    function($scope, $resource, $rootScope) {
+    '$rootScope', '$location', '$anchorScroll',
+    function($scope, $resource, $rootScope, $location, $anchorScroll) {
 
         let monthNames = {
           0 : "January",
@@ -60,8 +60,9 @@ vitaApp.controller('MainController', ['$scope', '$resource',
         // -- Set new default font family and font color to mimic Bootstrap's default styling
         Chart.defaults.global.defaultFontFamily = '-apple-system,system-ui,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif';
         Chart.defaults.global.defaultFontColor = '#292b2c';
-        google.charts.load('current', {packages: ['corechart', 'bar', 'calendar', 'geochart', 'wordtree'],
-          'mapsApiKey': 'AIzaSyD-9tSrke72PouQMnMX-a7eZSW0jkFMBWY'});
+        // google.charts.load('current', {packages: ['corechart', 'bar', 'calendar', 'geochart', 'wordtree'],
+        //   'mapsApiKey': 'AIzaSyD-9tSrke72PouQMnMX-a7eZSW0jkFMBWY'});
+        //TODO: add back when get internet
 
         (function($) {
 
@@ -122,10 +123,37 @@ vitaApp.controller('MainController', ['$scope', '$resource',
 
         })(jQuery);
 
-
+        // $rootScope.$on('$routeChangeSuccess', function(newRoute, oldRoute) {
+        //   if($location.hash()) $anchorScroll();
+        // });
 
         $scope.main = {};
         $scope.title = "Vita - Journal Insights";
+        $scope.main.navbaritems = { //TODO: get to work with refesh
+          "dash" : false,
+          "search": false,
+          "learn": false,
+          "relate": false
+        }
+        $scope.main.navbaritems[$location.path().slice(1)] = true;
+
+        $scope.main.scrollTo = function(id) {
+          let old = $location.hash();
+          $location.hash(id);
+          $anchorScroll();
+          $location.hash(old);
+        }
+
+        $scope.main.markSelected = function(item) {
+          $scope.main.navbaritems[item] = true;
+          // $scope.main.navbaritems.filter(function(x){ return x.key != item.key; }).map(function(x){  
+          //  x.selected=false;
+          // });
+          for(var key in $scope.main.navbaritems) {
+            if(key !== item) $scope.main.navbaritems[key] = false;
+          }
+          console.log($scope.main.navbaritems);
+        };
 
         $scope.main.drawAreaChart = function(id, hoverLabel, labels, data, maxval, color) {
           var colors = {}
@@ -192,7 +220,9 @@ vitaApp.controller('MainController', ['$scope', '$resource',
           });
         };
 
-        $scope.main.drawBarChart = function(id, hoverLabel, labels, data, maxval) {
+        $scope.main.drawBarChart = function(id, hoverLabel, labels, data, maxval, color) {
+          if(!color) color = "rgba(2,117,216,1)";
+
           var ctx = document.getElementById(id);
             var myLineChart = new Chart(ctx, {
                 type: 'bar',
@@ -200,8 +230,8 @@ vitaApp.controller('MainController', ['$scope', '$resource',
                   labels: labels,
                   datasets: [{
                     label: hoverLabel,
-                    backgroundColor: "rgba(2,117,216,1)",
-                    borderColor: "rgba(2,117,216,1)",
+                    backgroundColor: color,
+                    borderColor: color,
                     data: data,
                   }],
                 },

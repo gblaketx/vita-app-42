@@ -1,11 +1,18 @@
 var express = require('express');
 var mongoose = require('mongoose');
+mongoose.Promise = global.Promise;
 var app = express();
 var async = require('async');
 
 var entryModels = require('./schema/entry.js');
 var Entry = entryModels.Entry;
 var Location = entryModels.Location;
+
+var gramsModels = require('./schema/grams.js');
+var Grams = gramsModels.Grams;
+var Unigram = gramsModels.Unigram;
+
+var Walk = require('./schema/walk.js');
 
 var url = 'mongodb://localhost/vitaDB';
 mongoose.connect(url, { useMongoClient: true });  //TODO: Deprecation warning
@@ -279,36 +286,15 @@ app.get('/dashboard/topWords', function(request, response) {
     });
 });
 
-app.get('/dashboard/tempTime', function(request, response) {
-  console.log("Received dashboard temperature time request");
-  Entry.find().select("timestamp weather").exec(function(err, entries) {
-    if(err) {
-      console.error('Doing /dashboard/tempTime error', err);
-      response.status(500).send(JSON.stringify(err));
-      return;
-    } else {
-      var dates = [];
-      var data = [];
-      for (var i = 0; i < entries.length; i++) {
-        if(entries[i].weather.temp !== undefined) {
-          // var stamp = new Date(entries[i].timestamp); //TODO: way w/o date conversion?
-          // var datestring = monthNames[stamp.getMonth()] + ' ' +  stamp.getDate() + ', ' + stamp.getFullYear();
-          dates.push(timestampToDate(entries[i].timestamp));
-          data.push(entries[i].weather.temp);
-        }
-      }
-      response.end(JSON.stringify({"dates": dates, "data": data}));
-    }
-  }); 
-});
-
 app.get('/dashboard/people', function(request, response) {
   console.log("Received dashboard people request");
   var peopleCounts = {};
   var totalPeopleCount = 0;
+  var noPeopleMentions = 0;
   Entry.find().select("namedEntities wordCounts").cursor()
     .on('data', function(entry) {
       let people = entry.namedEntities;
+      if(people.length === 0) noPeopleMentions++;
       for (var i = 0; i < people.length; i++) {
         let personKey = people[i].toLowerCase();
         if(personKey in entry.wordCounts) {
@@ -317,7 +303,7 @@ app.get('/dashboard/people', function(request, response) {
             peopleCounts[people[i]] += entry.wordCounts[personKey].count;
           } else {
             peopleCounts[people[i]] = entry.wordCounts[personKey].count;
-          }         
+          }       
         }
       }
     })
@@ -338,7 +324,8 @@ app.get('/dashboard/people', function(request, response) {
       var props = props.slice(0,8);
       var res = {"people" : [], "data": [], 
         "totalDistinctPeople": Object.keys(peopleCounts).length.toLocaleString(), 
-        "totalPeopleCount": totalPeopleCount.toLocaleString()
+        "totalPeopleCount": totalPeopleCount.toLocaleString(),
+        "noPeopleMentions": noPeopleMentions
       };
 
       for (var i = 0; i < props.length; i++) {
@@ -422,8 +409,194 @@ app.get('/search/counts/:term', function(request, response) {
     });
 });
 
+app.get('/learn/:n/:length', function(request, response) {
+  startupText(request.params.n, function(text, unigrams, gramsDict) { 
+    generateText(unigrams, gramsDict, request.params.n, 
+      request.params.length, text, request, response);
+  });
+
+});
+
+app.get('/relate/tempTime', function(request, response) {
+  console.log("Received relate temperature time request");
+  Entry.find().select("timestamp weather").exec(function(err, entries) {
+    if(err) {
+      console.error('Doing /relate/tempTime error', err);
+      response.status(500).send(JSON.stringify(err));
+      return;
+    } else {
+      var dates = [];
+      var data = [];
+      for (var i = 0; i < entries.length; i++) {
+        if(entries[i].weather.temp !== undefined) {
+          dates.push(timestampToDate(entries[i].timestamp));
+          data.push(entries[i].weather.temp);
+        }
+      }
+      response.end(JSON.stringify({"dates": dates, "data": data}));
+    }
+  }); 
+});
+
+
+app.get('/relate/walkDistance', function(request, response) {
+  console.log("Received walk distance request");
+  Walk.find({}, function(err, docs) {
+    if(err) {
+      console.error('Doing /relate/walkDistance', err);
+      response.status(500).send(JSON.stringify(err));
+      return;          
+    }
+    var dates = []
+    var data = [];
+    for (var i = 0; i < docs.length; i++) {
+      dates.push(timestampToDate(docs[i].date));
+      data.push(docs[i].distance);
+    }
+    response.end(JSON.stringify({"dates": dates, "data": data}));
+  });
+});
+
+app.get('/relate/weekdayLength', function(request, response) {
+  console.log("Received weekday length request");
+  var weekdayCounts = {}
+  for (var i = 0; i < 7; i++) {
+    weekdayCounts[i] = {"totalLength": 0, "totalEntries": 0};
+  }
+  Entry.find().select("timestamp length").cursor()
+    .on('data', function(entry) {
+      weekdayCounts[entry.timestamp.getDay()].totalLength += entry.length;
+      weekdayCounts[entry.timestamp.getDay()].totalEntries++;
+    })
+    .on('error', function(err) {
+      console.error('Doing /relate/weekdayLength', err);
+      response.status(500).send(JSON.stringify(err));
+      return; 
+    })
+    .on('end', function() {
+      var names = ["Sunday", "Monday", "Tuesday", "Wednesday", 
+        "Thursday", "Friday", "Saturday"];
+      var averages = []
+      for (var i = 0; i < names.length; i++) {
+        averages.push(Math.round(weekdayCounts[i].totalLength / weekdayCounts[i].totalEntries));
+      }
+      response.end(JSON.stringify({"labels": names, "data": averages}));
+    });
+
+});
+
+app.get('/relate/weekdaySentiment', function(request, response) {
+  console.log("Received weekday sentiment request");
+  var weekdayCounts = {}
+  for (var i = 0; i < 7; i++) {
+    weekdayCounts[i] = {"totalSentiment": 0, "totalEntries": 0};
+  }
+  Entry.find().select("timestamp sentiment").cursor()
+    .on('data', function(entry) {
+      weekdayCounts[entry.timestamp.getDay()].totalSentiment += entry.sentiment.score;
+      weekdayCounts[entry.timestamp.getDay()].totalEntries++;
+    })
+    .on('error', function(err) {
+      console.error('Doing /relate/weekdayLength', err);
+      response.status(500).send(JSON.stringify(err));
+      return; 
+    })
+    .on('end', function() {
+      var names = ["Sunday", "Monday", "Tuesday", "Wednesday", 
+        "Thursday", "Friday", "Saturday"];
+      var averages = []
+      for (var i = 0; i < names.length; i++) {
+        averages.push(weekdayCounts[i].totalSentiment / weekdayCounts[i].totalEntries);
+      }
+      console.log({"labels": names, "data": averages});
+      response.end(JSON.stringify({"labels": names, "data": averages}));
+    });
+
+});
+
 app.listen(app.get('port'), function() {
   console.log('Node app is running on port', app.get('port'));
 });
 
+// N-gram Helper functions
+function startupText(n, done_callback) {
+  var unigrams, gramsDict;
+  var text = [];
+  let gramsDictName = n + "-gram";
+  let query = {name: {$in: ["1-gram", gramsDictName]}};
+  Grams.find(query, function(err, docs) {
+    if(err) {
+      console.error('Doing /learn/' + n + '/' + textLength +' error', err);
+      response.status(500).send(JSON.stringify(err));
+      return;          
+    }
+    for (var i = 0; i < docs.length; i++) { //TODO: better way?
+      if(docs[i].name === "1-gram") {
+        unigrams = docs[i].content;
+      } else if(docs[i].name === gramsDictName) {
+        gramsDict = docs[i].content;
+      }
+    }
+
+    if(n != 1) {
+      // Technically we could do this with the next smallest dict, but that requires retrieving it
+      let keys = Object.keys(gramsDict);
+      let words = keys[keys.length * Math.random() << 0];
+      text = words.split(' ');
+    }
+    done_callback(text, unigrams, gramsDict);
+  });
+};
+
+function generateText(unigrams, gramsDict, n, textLength, text, request, response) {
+  console.log("text", text);
+  if(n != 1) textLength = textLength - n;
+  for(var i = 0; i < textLength; i++) {
+    var endings;
+    if(n == 1) {
+      endings = unigrams;
+    } else {
+      let key = text.slice(text.length - n + 1).join(' ');
+      endings = gramsDict[key];
+    }
+    var next = binSearch(endings, Math.random(), 0, endings.length);
+    text.push(next);
+  }
+  var outputText = "";
+  for (var i = 0; i < text.length; i++) {
+    let word = text[i];
+    var skip = false;
+    if([',', '.', '?', '!', ')', ';', ':', "n't", "'ve", "'ll", "'m", "'re", "'d"].indexOf(word) !== -1) {
+      //Align left
+      outputText += word;
+    } else if(word === '(') {
+      //Align right
+      skip = true;
+      outputText += ' ' + word;
+    } else {
+      //Align center
+      if(!skip) {
+        outputText += ' ' + word;
+      } else {
+        outputText += word;
+        skip = false;
+      }
+    }
+  }
+  response.send(JSON.stringify({'text': outputText}));
+
+};
+
+function binSearch(array, num, start, end) {
+  if(end < start) return null;
+  let mid = Math.trunc((start + end) / 2);
+  let range = array[mid].range;
+  if(range[0] <= num && num < range[1]) {
+    return array[mid].word;
+  } else if(num < range[0]) {
+    return binSearch(array, num, start, mid);
+  } else {
+    return binSearch(array, num, mid + 1, end); //TODO: may need to check coverage
+  }
+};
 

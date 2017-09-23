@@ -73,7 +73,6 @@ vitaApp.controller("DashboardController", ["$scope", "$resource",
       google.charts.setOnLoadCallback(function() { 
         drawMapChart($scope.locCounts, 'US'); 
         drawMapChart($scope.locCounts, '155');
-
       });
     });
 
@@ -83,17 +82,13 @@ vitaApp.controller("DashboardController", ["$scope", "$resource",
       $scope.main.drawBarChart("commonPeopleChart", "Count", res.people, res.data, 350);
       $scope.dashboard.totalDistinctPeople = res.totalDistinctPeople;
       $scope.dashboard.totalPeopleCount = res.totalPeopleCount;
+      $scope.dashboard.noPeopleMentions = res.noPeopleMentions;
     });
 
     var TopWords = $resource('/dashboard/topWords');
     TopWords.get({}, function(words) {
       console.log(words);
       $scope.topWordsList = words;
-    });
-
-    var TempTime = $resource('/dashboard/tempTime');
-    TempTime.get({}, function(res) {
-      $scope.main.drawAreaChart("tempsAreaChart", "Temperature (F)", res["dates"], res["data"], 90, "red");
     });
 
     var Sentiment = $resource('/dashboard/sentiment');

@@ -6,8 +6,10 @@
 
 import re, datetime, os, nltk, json
 from nltk.sentiment.vader import SentimentIntensityAnalyzer
+from nltk.util import ngrams
 # import cPickle as pickle
-from collections import defaultdict
+import pandas as pd
+from collections import defaultdict, Counter
 
 MONTH_NAMES = {
     "january" : 1,
@@ -276,24 +278,89 @@ def parseFile(name):
         outfile = open('parsed_entries.json', "wb")
         json.dump(entries, outfile, cls=EntryEncoder)
 
-def findLongest(entries):
-    curDate = None
-    streak = 1
-    longest = 0
-    maxStreak = 0
-    for entry in entries:
-      if entry.getLength() > longest: longest = entry.getLength()
-      if curDate != None:
-        diff = entry.getTimestamp() - curDate
-        if diff.days < 2:
-          streak += 1
-        else:
-          if streak > maxStreak: maxStreak = streak
-          streak = 1
+def generateNGrams(filename):
+    with open(filename, 'r') as f:
+        next = f.readline()
+        buffers = []
+        buf = ""
+        curHeader = ""
+        prevLine = ""
 
-      curDate = entry.getTimestamp()
+        while next != "":
+            header = TIME_PATTERN.match(next)
+            if header:
+                if curHeader:
+                    buf = buf[0:buf.find(prevLine)]
+                    buffers.append(buf)
+                curHeader = header
+                buf = ""
+                Footer = ""
+            else:
+              if not MONTH_PATTERN.match(next): #Skip month stamps?
+                buf = ''.join([buf, next])
+                if next.strip(): prevLine = next #TODO: could track buffer index
+            
+            next = f.readline()    
 
-    print "Longest Entry: {}\nLongest Streak: {}".format(longest, maxStreak)
+    text = ''.join(buffers)
+    tokens = nltk.word_tokenize(text.decode('utf-8'))
+    #TODO: Lowercase tokens or no?
+    # trigrams = generateGramsDict(tokens, 3)
+    res = []
+    unigrams = Counter(tokens)
+    totalWords = sum(unigrams.values())
+    unigrams = dict(unigrams)
+    start = 0
+    unigramList = []
+    for word, count in unigrams.iteritems():
+        end = start + float(count) / totalWords
+        unigramList.append({"word": word, "range": [start, end]})
+        start = end
+
+    res.append({"name": "1-gram", "content": unigramList})
+    for size in range(2, 6):
+        name = "{}-gram".format(size)
+        res.append({"name": name, "content": generateGramsDict(tokens, size)})
+    outfile = open('ngrams.json', "wb")
+    json.dump(res, outfile)
+
+    # outfile = open('unigrams.json', "wb")
+    # json.dump(unigramList, outfile)
+
+def generateGramsDict(tokens, n):
+    # Note: uncomment to laplace smooth
+    # K_SIZE = 0.001 # Size of add-K smoothing factor
+    grams = ngrams(tokens, n)
+    grams = dict(Counter(grams))
+    res = defaultdict(lambda: [])
+    for gram, count in grams.iteritems():
+        key = ' '.join(gram[0:n-1])
+        res[key].append({"word": gram[n-1], "range": count})
+    # K_smooth = K_SIZE * len(grams)
+
+    for _, endList in res.iteritems():
+        # Note: Uncomment to Laplace Smooth
+        #endList.append({"word": "<*>", "range": K_smooth}) #TODO: Better wildcard char?
+        # WE don't add K to entries because the wildcard is a uniform random draw from all grams
+        total = sum(map(lambda x: x["range"], endList))
+        start = 0
+        for item in endList:
+            end = start + float(item["range"]) / total
+            item["range"] = [start, end] #Note this range is open on top end [start, end)
+            start = end
+    
+    return res
+
+def processHealthData(filename):
+    output = []
+    healthData = pd.read_csv(filename)
+    for _, row in healthData.iterrows():
+        item = dict(row)
+        item["distance"] = round(item["distance"], 2)
+        item["date"] = datetime.datetime.strptime(row["date"], "%m/%d/%y")
+        output.append(item)
+    outfile = open("health.json", "wb")
+    json.dump(output, outfile, cls=EntryEncoder)
 
 def main():
     print os.getcwd()
@@ -302,7 +369,9 @@ def main():
     #     entries = pickle.load(f)
     #     for entry in entries: print entry
     # parseFile("problemChildren.txt")
-    parseFile("all-entries-2017-04-30.txt")
-
+    # parseFile("all-entries-2017-04-30.txt")
+    # generateNGrams("smallTest.txt")
+    # generateNGrams("all-entries-2017-04-30.txt")
+    processHealthData("Health Data.csv")
 
 if __name__ == '__main__': main()

@@ -33,6 +33,12 @@
     <script src="components/search/searchController.js"></script>
     <link rel="stylesheet" type="text/css" href="components/search/search.css" />
 
+    <script src="components/learn/learnController.js"></script>
+    <link rel="stylesheet" type="text/css" href="components/learn/learn.css" />
+
+    <script src="components/relate/relateController.js"></script>
+    <link rel="stylesheet" type="text/css" href="components/relate/relate.css" />
+
     <!-- Bootstrap core CSS -->
     <link href="vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
 
@@ -55,29 +61,29 @@
       </button>
       <div class="collapse navbar-collapse" id="navbarResponsive">
         <ul class="navbar-nav navbar-sidenav" id="exampleAccordion">
-          <li class="nav-item active" data-toggle="tooltip" data-placement="right" title="Dashboard">
+          <li class="nav-item" data-toggle="tooltip" data-placement="right" title="Dashboard" ng-class="{active: main.navbaritems.dash}" ng-click="main.markSelected('dash')">
             <a class="nav-link" href="#!/dashboard">
               <i class="fa fa-fw fa-area-chart"></i>
               <span class="nav-link-text">
                 Dashboard</span>
             </a>
           </li>
-          <li class="nav-item" data-toggle="tooltip" data-placement="right" title="Charts">
+          <li class="nav-item" data-toggle="tooltip" data-placement="right" title="Charts" ng-class="{active: main.navbaritems.search }" ng-click="main.markSelected('search')">
             <a class="nav-link" href="#!/search/">
               <i class="fa fa-fw fa-search"></i>
               <span class="nav-link-text">
                 Search</span>
             </a>
           </li>
-          <li class="nav-item" data-toggle="tooltip" data-placement="right" title="Tables">
-            <a class="nav-link" href="#!/learn">
+          <li class="nav-item" data-toggle="tooltip" data-placement="right" title="Tables" ng-class="{active: main.navbaritems.learn}" ng-click="main.markSelected('learn')">
+            <a class="nav-link" href="#!/learn" >
               <i class="fa fa-fw fa-superpowers"></i>
               <span class="nav-link-text">
                 Learn</span>
             </a>
           </li>
-          <li class="nav-item" data-toggle="tooltip" data-placement="right" title="Components">
-            <a class="nav-link" href="#!/relate">
+          <li class="nav-item" data-toggle="tooltip" data-placement="right" title="Components" ng-class="{active: main.navbaritems.relate}" ng-click="main.markSelected('relate')">
+            <a class="nav-link" href="#!/relate" >
               <i class="fa fa-fw fa-exchange"></i>
               <span class="nav-link-text">
                 Relate</span>
@@ -111,7 +117,7 @@
 
     <!-- Scroll to Top Button -->
     <!-- TODO: Fix this -->
-    <a class="scroll-to-top rounded" href="#page-top">
+    <a class="scroll-to-top rounded" ng-click="main.scrollTo('page-top');">
       <i class="fa fa-angle-up"></i>
     </a>
 

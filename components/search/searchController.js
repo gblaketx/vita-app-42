@@ -1,3 +1,5 @@
+"use strict";
+
 vitaApp.controller("SearchController", ["$scope", "$resource", "$routeParams", "$location",
   function($scope, $resource, $routeParams, $location) {
     $scope.search = {};

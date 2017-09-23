@@ -1,0 +1,39 @@
+<div class="content-wrapper">
+  <div class="container-fluid">
+    <div class="col-lg-12">
+      <div class="card mb-3">
+        <div class="card-header">
+          <i class="fa fa-gears"></i>
+          N-Gram Generator
+        </div>
+        <div class="card-body">
+          <span layout-gt-md="row" layout-sm="column" layout-align="space-between center">
+            <form class="col-lg-6 col-md-12" ng-submit="learn.generateNGrams()" name="ngramForm">
+              <h4>Number of Words to Use in N-Grams</h4>
+              <span layout="row" layout-align="space-around center">
+                <md-radio-group required layout="row" ng-model="learn.gramSize">
+                  <md-radio-button value="1" class="md-primary">1</md-radio-button>
+                  <md-radio-button value="2">2</md-radio-button>
+                  <md-radio-button value="3">3</md-radio-button>
+                  <md-radio-button value="4">4</md-radio-button>
+                  <md-radio-button value="5">5</md-radio-button>
+                </md-radio-group>
+                <md-button type="submit" class="md-primary md-raised" ng-disabled="ngramForm.$invalid">Generate</md-button>                  
+              </span>
+            </form>
+            <span class="col-lg-6 col-md-12">
+              <h4>Output Text</h4>
+              {{learn.outputText}}
+            </span>
+          </span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 
+                  <md-slider flex min="50" max="250" class="md-accent" ng-model="learn.textLength" aria-label="length"></md-slider>
+                  <md-input-container>
+                    <input flex type="number" ng-model="learn.textLength" aria-label="length" aria-controls="length-slider">
+                  </md-input-container> -->
