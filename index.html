@@ -75,19 +75,31 @@
                 Search</span>
             </a>
           </li>
-          <li class="nav-item" data-toggle="tooltip" data-placement="right" title="Tables" ng-class="{active: main.navbaritems.learn}" ng-click="main.markSelected('learn')">
+          <li class="nav-item" data-toggle="tooltip" data-placement="right" title="Tables" ng-class="{active: main.navbaritems.learn}" ng-click="main.markSelected('learn')" ng-if="main.getEvernoteAuthor() === null">
             <a class="nav-link" href="#!/learn" >
               <i class="fa fa-fw fa-superpowers"></i>
               <span class="nav-link-text">
                 Learn</span>
             </a>
           </li>
-          <li class="nav-item" data-toggle="tooltip" data-placement="right" title="Components" ng-class="{active: main.navbaritems.relate}" ng-click="main.markSelected('relate')">
+          <li class="nav-item" data-toggle="tooltip" data-placement="right" title="Components" ng-class="{active: main.navbaritems.relate}" ng-click="main.markSelected('relate')" ng-if="main.getEvernoteAuthor() === null">
             <a class="nav-link" href="#!/relate" >
               <i class="fa fa-fw fa-exchange"></i>
               <span class="nav-link-text">
                 Relate</span>
             </a>
+          </li>
+          <li class="nav-item" data-toggle="tooltip" data-placement="right" title="Components">
+            <span layout="row" class="nav-link" ng-cloak>
+              <md-input-container>
+                <h1 class="navbar-brand">Choose Journal</h1>
+                <md-select ng-model="main.selectedJournal" md-selected-text="main.getSelectedJournal()" ng-change="main.setAuthor()">
+                  <md-optgroup label="main.journals">
+                    <md-option ng-value="journal" ng-repeat="journal in main.journals">{{journal}}</md-option>
+                  </md-optgroup>
+                </md-select>
+              </md-input-container>
+            </span>
           </li>
         </ul>
         <ul class="navbar-nav sidenav-toggler">

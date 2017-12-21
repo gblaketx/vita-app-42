@@ -3,10 +3,13 @@ var mongoose = require('mongoose');
 mongoose.Promise = global.Promise;
 var app = express();
 var async = require('async');
+var bodyParser = require('body-parser');
 
 var entryModels = require('./schema/entry.js');
 var Entry = entryModels.Entry;
 var Location = entryModels.Location;
+
+var EvernoteEntry = require('./schema/evernoteEntry.js');
 
 var gramsModels = require('./schema/grams.js');
 var Grams = gramsModels.Grams;
@@ -14,17 +17,24 @@ var Unigram = gramsModels.Unigram;
 
 var Walk = require('./schema/walk.js');
 
-var url = 'mongodb://localhost/vitaDB';
+var url = 'mongodb://localhost/vitaDB'; //TODO: Change for remote host
 mongoose.connect(url, { useMongoClient: true });  //TODO: Deprecation warning
+
+// Journal author. Undefined if using non-Evernote journal
+var evernoteAuthor = undefined;
+var filterAuthor = false;
+var EntryModel = Entry;
 
 app.set('port', (process.env.PORT || 5000));
 
 app.use(express.static(__dirname));
+app.use(bodyParser.json());
 
 // views is directory for all template files
 // app.set('views', __dirname + '/views');
 // app.set('view engine', 'ejs');
-
+// TODO: Evernote entries not date-ordered
+// TODO: nbsp appearing under words?
 let monthNames = {
   0 : "January",
   1 : "February",
@@ -45,7 +55,7 @@ function timestampToDate(timestamp) {
    timestamp.getDate() + ', ' + timestamp.getFullYear()); 
 };
 
-app.get('/dashboard/summary', function (request, response) {
+app.get('/dashboard/summary', function (request, response) { //TODO: Needs to be modified to work with Evernote
   console.log("Received dashboard summary request");
   var stats = {};
   // TODO: may break up into different queries when getting details. Or not
@@ -128,13 +138,65 @@ app.get('/dashboard/summary', function (request, response) {
 
 });
 
+
+app.get('/dashboard/familySummary', function (request, response) { //TODO: Needs to be modified to work with Evernote
+  console.log("Received dashboard familySummary request");
+  var stats = {};
+  // TODO: may break up into different queries when getting details. Or not
+  async.parallel([
+      function(parallel_done) {
+        EvernoteEntry.count(getAuthorFilter(), function(err, count) {
+          if(err) return parallel_done(err);
+          stats["numEntries"] = count;
+          parallel_done();
+        });
+      },
+      function(parallel_done) {
+        //TODO: Something to replace streak
+        parallel_done();
+      },
+      function(parallel_done) {
+        var query = EvernoteEntry.findOne(getAuthorFilter()).sort({length:-1}).limit(1)
+        query.select("timestamp author namedEntities length").exec(function(err, entry) {
+          if(err) return parallel_done(err);
+          stats["longestLength"] = entry.length.toLocaleString();
+          stats["longestEntry"] = entry;
+          parallel_done();
+        });
+      },
+      function(parallel_done) {
+        var pipeline = [
+          { $match: getAuthorFilter()},
+          { $group: { _id: null, sum: {$sum: "$length"}} },
+          { $project: { _id: 0, sum: 1} }
+        ];
+        EvernoteEntry.aggregate(
+          pipeline, function(err, res) {
+            console.log(res);
+            stats["totalWords"] = res[0].sum.toLocaleString();
+            parallel_done();
+          }
+        );
+      }
+    ], function(err) {
+    if(err) {
+      console.error('Doing /dashboard/summary error: ', err);
+      response.status(500).send(JSON.stringify(err));
+    } else {
+      response.end(JSON.stringify(stats));
+    }
+  });
+
+});
+
 app.get('/dashboard/yearCounts', function(request, response) {
   console.log("Received yearCounts request");
   var pipeline = [
+    { $match: getAuthorFilter()},
     { $project: {year: {$year: "$timestamp"}} },
     { $group: { _id: "$year", count: {$sum: 1}} }
   ];
-  Entry.aggregate(
+  EntryModel.aggregate(
     pipeline, function(err, res) {
       if(err) {
         console.error('Doing /dashboard/yearCounts error: ', err);
@@ -155,7 +217,7 @@ app.get('/dashboard/yearCounts', function(request, response) {
 app.get('/dashboard/sentiment', function(request, response) {
   console.log('Received dashboard/sentiment request');
   var counts = {"pos": 0, "neu": 0, "neg": 0};
-  Entry.find().select("sentiment").cursor()
+  EntryModel.find().select("sentiment").cursor()
     .on('data', function(entry) {
       counts.pos += entry.sentiment.pos;
       counts.neu += entry.sentiment.neu;
@@ -178,7 +240,8 @@ app.get('/dashboard/sentiment', function(request, response) {
 
 app.get('/dashboard/entryLengths', function(request, response) {
   console.log("Received dashboard entry lengths request");
-  Entry.find().select("timestamp length").exec(function(err, entries) {
+
+  EntryModel.find(getAuthorFilter()).select("timestamp length").exec(function(err, entries) {
     if(err) {
       console.error('Doing /dashboard/entryLengths error', err);
       response.status(500).send(JSON.stringify(err));
@@ -187,8 +250,6 @@ app.get('/dashboard/entryLengths', function(request, response) {
       var dates = [];
       var data = [];
       for (var i = 0; i < entries.length; i++) {
-        // var stamp = new Date(entries[i].timestamp); //TODO: way w/o date conversion?
-        // var datestring = monthNames[stamp.getMonth()] + ' ' +  stamp.getDate() + ', ' + stamp.getFullYear(); 
         dates.push(timestampToDate(entries[i].timestamp));
         data.push(entries[i].length);
       }
@@ -200,7 +261,7 @@ app.get('/dashboard/entryLengths', function(request, response) {
 app.get('/dashboard/locationCounts', function(request, response) {
   console.log("Received location counts request");
   var cityCounts = [["Address", "Count"]];
-  Entry.distinct("loc.city", function(err, distinctCities) {
+  Entry.distinct("loc.city", function(err, distinctCities) { // This is not set to entry model because Evernotes do not have location tags
     if(err) {
       console.error('Doing /dashboard/locationCounts error', err);
       response.status(500).send(JSON.stringify(err));
@@ -231,7 +292,7 @@ app.get('/dashboard/locationCounts', function(request, response) {
 app.get('/dashboard/topWords', function(request, response) {
   console.log("Received topWords request");
   var counts = {"nouns" : {}, "adjectives": {}, "verbs": {}};
-  Entry.find().select("wordCounts").cursor()
+  EntryModel.find(getAuthorFilter()).select("wordCounts").cursor()
     .on('data', function(entry) {
       let tokens = entry.wordCounts;
       for (var key in tokens) {
@@ -291,7 +352,7 @@ app.get('/dashboard/people', function(request, response) {
   var peopleCounts = {};
   var totalPeopleCount = 0;
   var noPeopleMentions = 0;
-  Entry.find().select("namedEntities wordCounts").cursor()
+  EntryModel.find(getAuthorFilter()).select("namedEntities wordCounts").cursor()
     .on('data', function(entry) {
       let people = entry.namedEntities;
       if(people.length === 0) noPeopleMentions++;
@@ -342,7 +403,7 @@ app.get('/search/phrases/:term', function(request, response) {
   console.log("received search phrases request " + searchWord);
   let maxPhraseLength = 5;
   var phrases = [['Phrases']];
-  Entry.find().select("tokens").cursor()
+  EntryModel.find(getAuthorFilter()).select("tokens").cursor()
     .on('data', function(entry) {
       var length = 1;
       var tokens = entry.tokens;
@@ -381,7 +442,7 @@ app.get('/search/counts/:term', function(request, response) {
   // var res = { "entries": {"timestamp": [], "data": []}, "count": 0, "max": 0};
   var res = {"entries": [], "count": 0, "max": 0};
   var sentiment = {"pos": 0, "neu": 0 , "neg": 0};
-  Entry.find().select("timestamp wordCounts").cursor()
+  EntryModel.find(getAuthorFilter()).select("timestamp wordCounts").cursor()
     .on('data', function(entry) {
       if(searchWord in entry.wordCounts) {
         let entryCount = entry.wordCounts[searchWord].count;
@@ -514,6 +575,25 @@ app.get('/relate/weekdaySentiment', function(request, response) {
 
 });
 
+app.post('/setAuthor/', function(request, response) {
+  evernoteAuthor = request.body.name; //TODO: Anything else to do here?
+  if(evernoteAuthor === null) { // Use Gordon Journal
+    filterAuthor = false;
+    EntryModel = Entry;
+  } else if(evernoteAuthor === "All") {
+    filterAuthor = false;
+    EntryModel = EvernoteEntry;
+  } else if(["Gordon", "Kent", "Mom", "Dad"].indexOf(evernoteAuthor) >= 0) { // Author must be Gordon, Kent, Mom, or Dad
+    filterAuthor = true;
+    EntryModel = EvernoteEntry;
+  } else {
+    console.error('Error on /setAuthor/' + evernoteAuthor);
+    return response.status(400).send(JSON.stringify("setAuthor Error"));
+  }
+  response.end();
+
+});
+
 app.listen(app.get('port'), function() {
   console.log('Node app is running on port', app.get('port'));
 });
@@ -599,4 +679,13 @@ function binSearch(array, num, start, end) {
     return binSearch(array, num, mid + 1, end); //TODO: may need to check coverage
   }
 };
+
+// TODO: Special work for "all"?
+function getAuthorFilter() {
+  if(filterAuthor) {
+    return { author: evernoteAuthor };
+  } else {
+    return {};
+  }
+}
 

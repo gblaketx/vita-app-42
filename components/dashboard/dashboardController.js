@@ -18,6 +18,8 @@ vitaApp.controller("DashboardController", ["$scope", "$resource",
 
     //TODO: Set maps API key
     function drawMapChart(input, region) {
+      if($scope.main.getEvernoteAuthor() !== null) return;
+
       var div;
       var data = google.visualization.arrayToDataTable(input);
 
@@ -53,49 +55,61 @@ vitaApp.controller("DashboardController", ["$scope", "$resource",
       drawMapChart($scope.locCounts, '155');
     });
 
-    var Summary = $resource('/dashboard/summary');
-    Summary.get({}, function(stats) {
-      console.log('Entry Count', stats.numEntries);
-      stats.longestEntry.timestamp = $scope.main.timestampToDate(stats.longestEntry.timestamp);
-      $scope.stats = stats;
-    });
-
-    var EntryLengths = $resource('/dashboard/entryLengths');
-    EntryLengths.get({}, function(entries) {
-      $scope.main.drawAreaChart("lengthsAreaChart", "Entry Length", entries["dates"], entries["data"], 1100);
-    });
-
-    var LocationCounts = $resource('/dashboard/locationCounts');
-    LocationCounts.get({}, function(locCounts) {
-
-      console.log(locCounts);
-      $scope.locCounts = locCounts["res"];
-      google.charts.setOnLoadCallback(function() { 
-        drawMapChart($scope.locCounts, 'US'); 
-        drawMapChart($scope.locCounts, '155');
+    function getModelData() {
+      console.log('Getting Model Data');
+      var Summary; // Populated conditionally
+      var EntryLengths = $resource('/dashboard/entryLengths');
+      EntryLengths.get({}, function(entries) {
+        $scope.main.drawAreaChart("lengthsAreaChart", "Entry Length", entries["dates"], entries["data"], Math.max.apply(Math, entries["data"]));
       });
-    });
 
-    var PeopleCounts = $resource('/dashboard/people');
-    PeopleCounts.get({}, function(res) {
-      console.log(res);
-      $scope.main.drawBarChart("commonPeopleChart", "Count", res.people, res.data, 350);
-      $scope.dashboard.totalDistinctPeople = res.totalDistinctPeople;
-      $scope.dashboard.totalPeopleCount = res.totalPeopleCount;
-      $scope.dashboard.noPeopleMentions = res.noPeopleMentions;
-    });
+      if($scope.main.getEvernoteAuthor() == null) { 
+        Summary = $resource('/dashboard/summary');
+      } else { // Don't get location on Evernote Entries
+        Summary = $resource('/dashboard/familySummary');
+        var LocationCounts = $resource('/dashboard/locationCounts');
+        LocationCounts.get({}, function(locCounts) {
+          console.log(locCounts);
+          $scope.locCounts = locCounts["res"];
+          google.charts.setOnLoadCallback(function() { 
+            drawMapChart($scope.locCounts, 'US'); 
+            drawMapChart($scope.locCounts, '155');
+          });
+        });
+      }
 
-    var TopWords = $resource('/dashboard/topWords');
-    TopWords.get({}, function(words) {
-      console.log(words);
-      $scope.topWordsList = words;
-    });
 
-    var Sentiment = $resource('/dashboard/sentiment');
-    Sentiment.get({}, function(res) {
-      console.log(res);
-      $scope.main.drawPieChart("sentimentPieChart", res.labels, res.data);
-    });
+      Summary.get({}, function(stats) {
+        console.log('Entry Count', stats.numEntries);
+        stats.longestEntry.timestamp = $scope.main.timestampToDate(stats.longestEntry.timestamp);
+        $scope.stats = stats;
+      });
+
+      var PeopleCounts = $resource('/dashboard/people');
+      PeopleCounts.get({}, function(res) {
+        console.log(res);
+        $scope.main.drawBarChart("commonPeopleChart", "Count", res.people, res.data, Math.max.apply(Math, res.data));
+        $scope.dashboard.totalDistinctPeople = res.totalDistinctPeople;
+        $scope.dashboard.totalPeopleCount = res.totalPeopleCount;
+        $scope.dashboard.noPeopleMentions = res.noPeopleMentions;
+      });
+
+      var TopWords = $resource('/dashboard/topWords');
+      TopWords.get({}, function(words) {
+        console.log(words);
+        $scope.topWordsList = words;
+      });
+
+      var Sentiment = $resource('/dashboard/sentiment');
+      Sentiment.get({}, function(res) {
+        console.log(res);
+        $scope.main.drawPieChart("sentimentPieChart", res.labels, res.data);
+      });      
+    }
+
+    getModelData();
+
+    $scope.$on('setAuthor', getModelData);
 
   }]);
 

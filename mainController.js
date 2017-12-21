@@ -38,8 +38,8 @@ vitaApp.config(function ($routeProvider, $mdThemingProvider) {
 });
 
 vitaApp.controller('MainController', ['$scope', '$resource', 
-    '$rootScope', '$location', '$anchorScroll',
-    function($scope, $resource, $rootScope, $location, $anchorScroll) {
+    '$rootScope', '$location', '$anchorScroll', '$http',
+    function($scope, $resource, $rootScope, $location, $anchorScroll, $http) {
 
         let monthNames = {
           0 : "January",
@@ -60,9 +60,8 @@ vitaApp.controller('MainController', ['$scope', '$resource',
         // -- Set new default font family and font color to mimic Bootstrap's default styling
         Chart.defaults.global.defaultFontFamily = '-apple-system,system-ui,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif';
         Chart.defaults.global.defaultFontColor = '#292b2c';
-        // google.charts.load('current', {packages: ['corechart', 'bar', 'calendar', 'geochart', 'wordtree'],
-        //   'mapsApiKey': 'AIzaSyD-9tSrke72PouQMnMX-a7eZSW0jkFMBWY'});
-        //TODO: add back when get internet
+        google.charts.load('current', {packages: ['corechart', 'bar', 'calendar', 'geochart', 'wordtree'],
+          'mapsApiKey': 'AIzaSyD-9tSrke72PouQMnMX-a7eZSW0jkFMBWY'});
 
         (function($) {
 
@@ -136,6 +135,26 @@ vitaApp.controller('MainController', ['$scope', '$resource',
           "relate": false
         }
         $scope.main.navbaritems[$location.path().slice(1)] = true;
+        $scope.main.journals = [
+          "Personal: Gordon", 
+          "Evernote: All", 
+          "Evernote: Gordon",
+          "Evernote: Kent",
+          "Evernote: Mom",
+          "Evernote: Dad"
+        ];
+
+        $scope.main.selectedJournal = "Personal: Gordon";
+        $scope.main.getSelectedJournal = function() {
+          return $scope.main.selectedJournal;
+        };
+
+        $scope.main.getEvernoteAuthor = function() {
+          if($scope.main.selectedJournal == undefined || $scope.main.selectedJournal === "Personal: Gordon") return null;
+          return $scope.main.selectedJournal.substring(10);
+        }
+
+        
 
         $scope.main.scrollTo = function(id) {
           let old = $location.hash();
@@ -170,6 +189,15 @@ vitaApp.controller('MainController', ['$scope', '$resource',
           }
 
           var ctx = document.getElementById(id);
+
+          // Remove previous duplicate, if any
+          Chart.helpers.each(Chart.instances, function(instance) {
+            if(instance.chart.canvas.id === id) {
+              instance.chart.destroy();
+            }
+          });
+
+
           var myLineChart = new Chart(ctx, {
             type: 'line',
             data: {
@@ -223,6 +251,13 @@ vitaApp.controller('MainController', ['$scope', '$resource',
         $scope.main.drawBarChart = function(id, hoverLabel, labels, data, maxval, color) {
           if(!color) color = "rgba(2,117,216,1)";
 
+          // Remove previous duplicate, if any
+          Chart.helpers.each(Chart.instances, function(instance) {
+            if(instance.chart.canvas.id === id) {
+              instance.chart.destroy();
+            }
+          });
+
           var ctx = document.getElementById(id);
             var myLineChart = new Chart(ctx, {
                 type: 'bar',
@@ -264,6 +299,14 @@ vitaApp.controller('MainController', ['$scope', '$resource',
         };
 
         $scope.main.drawPieChart = function(id, labels, data) {
+
+          // Remove previous duplicate, if any
+          Chart.helpers.each(Chart.instances, function(instance) {
+            if(instance.chart.canvas.id === id) {
+              instance.chart.destroy();
+            }
+          });
+          
           // -- Pie Chart Example
           var ctx = document.getElementById(id);
           var myPieChart = new Chart(ctx, {
@@ -295,9 +338,20 @@ vitaApp.controller('MainController', ['$scope', '$resource',
         }
 
         $scope.main.timestampToDate = function(timestamp) {
-            let stamp = new Date(timestamp);
-            return(monthNames[stamp.getMonth()] + ' ' + 
-             stamp.getDate() + ', ' + stamp.getFullYear()); 
+          let stamp = new Date(timestamp);
+          return(monthNames[stamp.getMonth()] + ' ' + 
+           stamp.getDate() + ', ' + stamp.getFullYear()); 
         };
+
+        $scope.main.setAuthor = function() {
+          console.log('setAuthor called');
+          $http.post('/setAuthor/', { name: $scope.main.getEvernoteAuthor()}).then(
+            function successCallback(response) {
+              $rootScope.$broadcast('setAuthor'); //TODO: Set up broadcast
+              console.log('Broadcast setAuthor');
+            }, function errorCallback(response) {
+              console.log('setAuthor error');
+            });
+        }
 
     }]);
