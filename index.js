@@ -17,7 +17,8 @@ var Unigram = gramsModels.Unigram;
 
 var Walk = require('./schema/walk.js');
 
-var url = 'mongodb://localhost/vitaDB'; //TODO: Change for remote host
+var url = process.env.MONGOLAB_URI
+//var url = 'mongodb://localhost/vitaDB'; //TODO: Change for remote host
 mongoose.connect(url, { useMongoClient: true });  //TODO: Deprecation warning
 
 // Journal author. Undefined if using non-Evernote journal

@@ -12,7 +12,6 @@ db.getCollection('familyEntries').find().forEach(function(entry) {
     entry.timestamp = new Date(entry.timestamp);
     db.getCollection('familyEntries').save(entry);
 });
-
 """
 
 # Data Processing for Family Journal Entries from Evernote .enex files to MongoDB importable JSON
