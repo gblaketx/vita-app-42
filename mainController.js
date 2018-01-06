@@ -165,13 +165,9 @@ vitaApp.controller('MainController', ['$scope', '$resource',
 
         $scope.main.markSelected = function(item) {
           $scope.main.navbaritems[item] = true;
-          // $scope.main.navbaritems.filter(function(x){ return x.key != item.key; }).map(function(x){  
-          //  x.selected=false;
-          // });
           for(var key in $scope.main.navbaritems) {
             if(key !== item) $scope.main.navbaritems[key] = false;
           }
-          console.log($scope.main.navbaritems);
         };
 
         $scope.main.drawAreaChart = function(id, hoverLabel, labels, data, maxval, color) {
@@ -431,7 +427,6 @@ vitaApp.controller('MainController', ['$scope', '$resource',
           console.log('Getting main modelData');
           var RecentEntry = $resource('/general/mostRecentEntry');
           RecentEntry.get({}, function(entry) {
-            console.log("Got most recent entry", entry);
             $scope.main.lastUpdated = $scope.main.timestampToDate(entry.timestamp);
           });
         }

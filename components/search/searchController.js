@@ -5,7 +5,6 @@ vitaApp.controller("SearchController", ["$scope", "$resource", "$routeParams", "
     $scope.search = {};
     $scope.search.term = $routeParams.term;
     $scope.search.searchbox = "";
-    console.log($scope.search.term);
     
     function drawWordChart(input, targetWord) {
       var data = google.visualization.arrayToDataTable(input);
@@ -21,7 +20,6 @@ vitaApp.controller("SearchController", ["$scope", "$resource", "$routeParams", "
     }
 
     $scope.search.submitSearch = function() {
-      console.log($scope.search.searchbox);
       $location.path('/search/' + $scope.search.searchbox.toLowerCase());
     }
 
@@ -45,7 +43,6 @@ vitaApp.controller("SearchController", ["$scope", "$resource", "$routeParams", "
 
       var Phrases = $resource('/search/phrases/:term');
       Phrases.get({term: $scope.search.term }, function(phrases) {
-        console.log(phrases);
         google.charts.setOnLoadCallback(function() {
           drawWordChart(phrases.res, $scope.search.term);
         });
@@ -54,7 +51,6 @@ vitaApp.controller("SearchController", ["$scope", "$resource", "$routeParams", "
 
       var SearchWordCounts = $resource('/search/counts/:term');
       SearchWordCounts.get({term: $scope.search.term}, function(res) {
-        console.log(res);
         $scope.search.searchWordCount = res.count;
         $scope.search.searchWordEntryCount = res.entries.length;
         // $scope.main.drawAreaChart("search_frequency_chart", "Count", 

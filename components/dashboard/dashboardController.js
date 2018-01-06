@@ -10,9 +10,7 @@ vitaApp.controller("DashboardController", ["$scope", "$resource",
       if($scope.dashboard.yearCounts) return;
       var YearCounts = $resource('/dashboard/yearCounts');
       YearCounts.get({}, function(res) {
-        console.log(res);
         $scope.dashboard.yearCounts = res;
-        console.log(Object.keys($scope.dashboard.yearCounts).sort());
       });
     }
 
@@ -85,7 +83,6 @@ vitaApp.controller("DashboardController", ["$scope", "$resource",
         Summary = $resource('/dashboard/familySummary');
         var LocationCounts = $resource('/dashboard/locationCounts');
         LocationCounts.get({}, function(locCounts) {
-          console.log(locCounts);
           $scope.locCounts = locCounts["res"];
           google.charts.setOnLoadCallback(function() { 
             drawMapChart($scope.locCounts, 'US'); 
@@ -96,14 +93,12 @@ vitaApp.controller("DashboardController", ["$scope", "$resource",
 
 
       Summary.get({}, function(stats) {
-        console.log('Entry Count', stats.numEntries);
         stats.longestEntry.timestamp = $scope.main.timestampToDate(stats.longestEntry.timestamp);
         $scope.stats = stats;
       });
 
       var PeopleCounts = $resource('/dashboard/people');
       PeopleCounts.get({}, function(res) {
-        console.log(res);
         $scope.main.drawBarChart("commonPeopleChart", "Count", res.people, res.data, Math.max.apply(Math, res.data));
         $scope.dashboard.totalDistinctPeople = res.totalDistinctPeople;
         $scope.dashboard.totalPeopleCount = res.totalPeopleCount;
@@ -112,13 +107,11 @@ vitaApp.controller("DashboardController", ["$scope", "$resource",
 
       var TopWords = $resource('/dashboard/topWords');
       TopWords.get({}, function(words) {
-        console.log(words);
         $scope.topWordsList = words;
       });
 
       var Sentiment = $resource('/dashboard/sentiment');
       Sentiment.get({}, function(res) {
-        console.log(res);
         $scope.main.drawPieChart("sentimentPieChart", res.labels, res.data);
       });      
     }
