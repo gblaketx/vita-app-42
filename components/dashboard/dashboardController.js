@@ -56,12 +56,28 @@ vitaApp.controller("DashboardController", ["$scope", "$resource",
     });
 
     function getModelData() {
-      console.log('Getting Model Data');
       var Summary; // Populated conditionally
+
+
+      //TODO: Revisit multiline
+      // if($scope.main.getEvernoteAuthor() === "All") {
+      //   var EntryLengths = $resource('/dashboard/allFamilyEntryLengths');
+      //   EntryLengths.get({}, function(entries) {
+      //     console.log("Family Entry Lengths", entries);
+      //     $scope.main.drawMultilineChart("lengthsAreaChart", "Entry Length", entries["data"], 3000); //TODO: Better way?
+      //   });  
+      // } else {
+      //   var EntryLengths = $resource('/dashboard/entryLengths');
+      //   EntryLengths.get({}, function(entries) {
+      //     $scope.main.drawAreaChart("lengthsAreaChart", "Entry Length", entries["dates"], entries["data"], Math.max.apply(Math, entries["data"]));
+      //   });        
+      // }
+
       var EntryLengths = $resource('/dashboard/entryLengths');
       EntryLengths.get({}, function(entries) {
         $scope.main.drawAreaChart("lengthsAreaChart", "Entry Length", entries["dates"], entries["data"], Math.max.apply(Math, entries["data"]));
-      });
+      });  
+
 
       if($scope.main.getEvernoteAuthor() == null) { 
         Summary = $resource('/dashboard/summary');

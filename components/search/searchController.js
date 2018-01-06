@@ -41,6 +41,8 @@ vitaApp.controller("SearchController", ["$scope", "$resource", "$routeParams", "
     });
 
     function loadModels() {
+      if(!$scope.search.term) return;
+
       var Phrases = $resource('/search/phrases/:term');
       Phrases.get({term: $scope.search.term }, function(phrases) {
         console.log(phrases);
@@ -71,6 +73,8 @@ vitaApp.controller("SearchController", ["$scope", "$resource", "$routeParams", "
       });
     }
 
-    if($scope.search.term) loadModels(); //TODO: probably only want to load on search
+    loadModels(); //TODO: probably only want to load on search
+
+    $scope.$on('setAuthor', loadModels);
 
 }]);

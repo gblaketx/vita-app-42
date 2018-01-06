@@ -55,6 +55,19 @@ function timestampToDate(timestamp) {
    timestamp.getDate() + ', ' + timestamp.getFullYear()); 
 };
 
+app.get('/general/mostRecentEntry', function (request, response) {
+  console.log('Received mostRecentEntry request');
+  var query = EntryModel.findOne(getAuthorFilter()).sort({timestamp: -1}).limit(1);
+  query.select("timestamp").exec(function(err, entry) {
+    if(err) {
+      console.log("Error doing general/mostRecentEntry");
+      response.status(500).send(JSON.stringify(err));
+    } else {
+      response.end(JSON.stringify(entry));
+    }
+  });
+});
+
 app.get('/dashboard/summary', function (request, response) { //TODO: Needs to be modified to work with Evernote
   console.log("Received dashboard summary request");
   var stats = {};
@@ -106,7 +119,7 @@ app.get('/dashboard/summary', function (request, response) { //TODO: Needs to be
           });
       },
       function(parallel_done) {
-        var query = Entry.findOne().sort({length:-1}).limit(1)
+        var query = Entry.findOne().sort({length:-1}).limit(1);
         query.select("timestamp loc weather namedEntities length").exec(function(err, entry) {
           if(err) return parallel_done(err);
           stats["longestLength"] = entry.length.toLocaleString();
@@ -249,11 +262,41 @@ app.get('/dashboard/entryLengths', function(request, response) {
     } else {
       var dates = [];
       var data = [];
+      var prevDate = null;
       for (var i = 0; i < entries.length; i++) {
-        dates.push(timestampToDate(entries[i].timestamp));
-        data.push(entries[i].length);
+        var date = timestampToDate(entries[i].timestamp);
+        if(!filterAuthor && prevDate === date) {
+          let lastIndex = data.length-1;
+          data[lastIndex] += entries[i].length;
+        } else {
+          dates.push(date);
+          data.push(entries[i].length);
+        }
+        prevDate = date;
       }
       response.end(JSON.stringify({"dates": dates, "data": data}));
+    }
+  });
+});
+
+app.get('/dashboard/allFamilyEntryLengths', function(request, response) {
+  console.log("Received dashboard allFamilyEntryLengths request");
+
+  EntryModel.find(getAuthorFilter()).select("timestamp author length").exec(function(err, entries) {
+    if(err) {
+      console.error('Doing /dashboard/entryLengths error', err);
+      response.status(500).send(JSON.stringify(err));
+      return;
+    } else {
+      var data = {"Gordon" : [], "Kent" : [], "Mom" : [], "Dad" : []};
+      for (var i = 0; i < entries.length; i++) {
+        if(entries[i].author in data) {
+          data[entries[i].author].push({x: timestampToDate(entries[i].timestamp), y: entries[i].length});
+        } else {
+          console.log("Untagged entry", entries[i].timestamp);
+        }
+      }
+      response.end(JSON.stringify({"data": data}));
     }
   });
 });

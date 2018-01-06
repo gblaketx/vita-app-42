@@ -133,10 +133,10 @@ vitaApp.controller('MainController', ['$scope', '$resource',
           "search": false,
           "learn": false,
           "relate": false
-        }
+        };
         $scope.main.navbaritems[$location.path().slice(1)] = true;
-        $scope.main.journals = [
-          "Personal: Gordon", 
+        $scope.main.journals = [ 
+          // "Personal: Gordon", TODO: Add back in with access control 
           "Evernote: All", 
           "Evernote: Gordon",
           "Evernote: Kent",
@@ -144,7 +144,9 @@ vitaApp.controller('MainController', ['$scope', '$resource',
           "Evernote: Dad"
         ];
 
-        $scope.main.selectedJournal = "Personal: Gordon";
+        // $scope.main.selectedJournal = "Personal: Gordon";
+        $scope.main.selectedJournal = "Evernote: Gordon";
+
         $scope.main.getSelectedJournal = function() {
           return $scope.main.selectedJournal;
         };
@@ -153,8 +155,6 @@ vitaApp.controller('MainController', ['$scope', '$resource',
           if($scope.main.selectedJournal == undefined || $scope.main.selectedJournal === "Personal: Gordon") return null;
           return $scope.main.selectedJournal.substring(10);
         }
-
-        
 
         $scope.main.scrollTo = function(id) {
           let old = $location.hash();
@@ -215,7 +215,7 @@ vitaApp.controller('MainController', ['$scope', '$resource',
                 pointHitRadius: 20,
                 pointBorderWidth: 2,
                 data: data,
-              }],
+              }]
             },
             options: {
               scales: {
@@ -243,6 +243,80 @@ vitaApp.controller('MainController', ['$scope', '$resource',
               },
               legend: {
                 display: false
+              }
+            }
+          });
+        };
+
+
+
+        $scope.main.drawMultilineChart = function(id, hoverLabel, data, maxval) {
+          let colors = {
+            "Gordon" : { "general" : "rgba(30, 140, 32, 1)", "background" : "rgba(30, 140, 32, 0.2)"},
+            "Kent" : { "general" : "rgba(2,117,216,1)", "background" : "rgba(2,117,216, 0.2)"},
+            "Mom" : { "general" : "rgba(242, 79, 152, 1)", "background" : "rgba(242, 79, 152, 0.2)"},
+            "Dad" : { "general" : "rgba(255, 51, 0, 1)", "background" : "rgba(255, 51, 0, 0.2)"}
+          };
+
+          var ctx = document.getElementById(id);
+
+          // Remove previous duplicate, if any
+          Chart.helpers.each(Chart.instances, function(instance) {
+            if(instance.chart.canvas.id === id) {
+              instance.chart.destroy();
+            }
+          });
+
+          var datasets = [];
+          for(var author in data) {
+            let info = {
+              label: author,
+              lineTension: 0.3,
+              backgroundColor: colors[author]["background"],
+              borderColor: colors[author]["general"],
+              pointRadius: 5,
+              pointBackgroundColor: colors[author]["general"],
+              pointBorderColor: "rgba(255,255,255,0.8)",
+              pointHoverBackgroundColor: colors[author]["general"],
+              pointHitRadius: 20,
+              pointBorderWidth: 2,
+              data: data[author],
+            };
+            datasets.push(info);
+          }
+
+
+          var myLineChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+              datasets: datasets
+            },
+            options: {
+              scales: {
+                xAxes: [{
+                  time: {
+                    unit: 'date'
+                  },
+                  gridLines: {
+                    display: false
+                  },
+                  ticks: {
+                    maxTicksLimit: 7
+                  }
+                }],
+                yAxes: [{
+                  ticks: {
+                    min: 0,
+                    max: maxval,
+                    maxTicksLimit: 5
+                  },
+                  gridLines: {
+                    color: "rgba(0, 0, 0, .125)",
+                  }
+                }],
+              },
+              legend: {
+                display: true
               }
             }
           });
@@ -306,7 +380,7 @@ vitaApp.controller('MainController', ['$scope', '$resource',
               instance.chart.destroy();
             }
           });
-          
+
           // -- Pie Chart Example
           var ctx = document.getElementById(id);
           var myPieChart = new Chart(ctx, {
@@ -347,11 +421,25 @@ vitaApp.controller('MainController', ['$scope', '$resource',
           console.log('setAuthor called');
           $http.post('/setAuthor/', { name: $scope.main.getEvernoteAuthor()}).then(
             function successCallback(response) {
-              $rootScope.$broadcast('setAuthor'); //TODO: Set up broadcast
-              console.log('Broadcast setAuthor');
+              $rootScope.$broadcast('setAuthor');
             }, function errorCallback(response) {
               console.log('setAuthor error');
             });
         }
+
+        function getModelData() {
+          console.log('Getting main modelData');
+          var RecentEntry = $resource('/general/mostRecentEntry');
+          RecentEntry.get({}, function(entry) {
+            console.log("Got most recent entry", entry);
+            $scope.main.lastUpdated = $scope.main.timestampToDate(entry.timestamp);
+          });
+        }
+
+        $scope.$on('setAuthor', getModelData);
+
+        $scope.main.setAuthor()
+        getModelData();
+
 
     }]);

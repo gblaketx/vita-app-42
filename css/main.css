@@ -356,3 +356,7 @@ footer.sticky-footer {
 .md-select-menu-container {
   z-index: 1040;
 }
+
+.indented {
+  margin-left: 34px;
+}
