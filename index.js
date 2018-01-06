@@ -18,7 +18,7 @@ var Unigram = gramsModels.Unigram;
 var Walk = require('./schema/walk.js');
 
 var url = process.env.MONGOLAB_URI
-//var url = 'mongodb://localhost/vitaDB'; //TODO: Change for remote host
+//var url = 'mongodb://localhost/vitaDB'; //Change for local db host
 mongoose.connect(url, { useMongoClient: true });  //TODO: Deprecation warning
 
 // Journal author. Undefined if using non-Evernote journal
@@ -156,6 +156,7 @@ app.get('/dashboard/summary', function (request, response) { //TODO: Needs to be
 app.get('/dashboard/familySummary', function (request, response) { //TODO: Needs to be modified to work with Evernote
   console.log("Received dashboard familySummary request");
   var stats = {};
+  var totalWordsCount;
   // TODO: may break up into different queries when getting details. Or not
   async.parallel([
       function(parallel_done) {
@@ -164,10 +165,6 @@ app.get('/dashboard/familySummary', function (request, response) { //TODO: Needs
           stats["numEntries"] = count;
           parallel_done();
         });
-      },
-      function(parallel_done) {
-        //TODO: Something to replace streak
-        parallel_done();
       },
       function(parallel_done) {
         var query = EvernoteEntry.findOne(getAuthorFilter()).sort({length:-1}).limit(1)
@@ -187,7 +184,8 @@ app.get('/dashboard/familySummary', function (request, response) { //TODO: Needs
         EvernoteEntry.aggregate(
           pipeline, function(err, res) {
             console.log(res);
-            stats["totalWords"] = res[0].sum.toLocaleString();
+            totalWordsCount = res[0].sum;
+            stats["totalWords"] = totalWordsCount.toLocaleString();
             parallel_done();
           }
         );
@@ -197,6 +195,7 @@ app.get('/dashboard/familySummary', function (request, response) { //TODO: Needs
       console.error('Doing /dashboard/summary error: ', err);
       response.status(500).send(JSON.stringify(err));
     } else {
+      stats["averageLength"] = Math.round(totalWordsCount / stats["numEntries"]);
       response.end(JSON.stringify(stats));
     }
   });

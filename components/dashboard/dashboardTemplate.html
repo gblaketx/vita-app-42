@@ -39,6 +39,9 @@
                 <div class="mr-5" ng-if="main.getEvernoteAuthor() === null">
                   Longest Streak: {{stats.streak.numDays}} Days
                 </div>
+                <div class="mr-5" ng-if="main.getEvernoteAuthor() !== null">
+                  Average Length: {{stats.averageLength}} Words
+                </div>
               </div>
               <span ng-click="dashboard.details.streak = !dashboard.details.streak" class="card-footer text-white clearfix small z-1" ng-if="main.getEvernoteAuthor() === null">
                 <span ng-show="!dashboard.details.streak" class="float-left">View Details</span>

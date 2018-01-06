@@ -94,6 +94,7 @@ vitaApp.controller("DashboardController", ["$scope", "$resource",
 
       Summary.get({}, function(stats) {
         stats.longestEntry.timestamp = $scope.main.timestampToDate(stats.longestEntry.timestamp);
+        console.log(stats);
         $scope.stats = stats;
       });
 
