@@ -4,6 +4,18 @@
 # Data Processing for Journal Entries
 # Author: Gordon Blake
 
+"""
+Import command
+mongoimport --db vitaDB --collection entries --jsonArray 
+< C:\Users\gblak\OneDrive\CodePractice\webdev\vita-app\data\parsed_entries.json
+
+Fixing the date
+db.getCollection('entries').find().forEach(function(entry) {
+    entry.timestamp = new Date(entry.timestamp);
+    db.getCollection('entries').save(entry);
+});
+"""
+
 import re, datetime, os, nltk, json
 from nltk.sentiment.vader import SentimentIntensityAnalyzer
 from nltk.util import ngrams
@@ -23,17 +35,35 @@ MONTH_NAMES = {
     "september" : 9,
     "october" : 10,
     "november" : 11,
-    "december" : 12
+    "december" : 12,
+    "jan": 1,
+    "feb": 2,
+    "mar": 3,
+    "apr": 4,
+    "jun": 6,
+    "jul": 7,
+    "aug": 8,
+    "sep": 9,
+    "oct": 10,
+    "nov": 11,
+    "dec": 12
 }
-TIME_PATTERN = re.compile("(\w+), (\w+) (\d+), (\d{4}) AT ((\d+):(\d{2})) (AM|PM)")
+TIME_PATTERN = re.compile("(\w+), (\w+) (\d+), (\d{4})(?: AT|,) ((\d+):(\d{2})) (AM|PM)")
 MONTH_PATTERN = re.compile("(" + "|".join(MONTH_NAMES.keys()) + ") (20\d{2})",
     flags=re.IGNORECASE)
 
+
+# (?:(\d+)(?:\–\d+)? )?([^,]+), ([^,]+), ([^,]+), ([^,•]*[^\s•])(( • (\d+)° (.+))?
 #TODO: Include dash in num or no?
 ADDRESS_PATTERN_FULL = re.compile(
-    "(?:(\d+)(?:\–\d+)? )?([^,]+), ([^,]+), ([^,]+), ([^,•]*[^\s•])( • (\d+)° (.+))?")
-ADDRESS_PATTERN_STREET = re.compile("([^,]+), ([^,]+), ([^,]+), ([^,•]*[^\s•])( • (\d+)° (.+))?")
-ADDRESS_PATTERN_CITY = re.compile("([^,]+), ([^,]+), ([^,•]*[^\s•])( • (\d+)° (.+))?")
+    "(?:(\d+)(?:\–\d+)? )?([^,]+), ([^,]+), ([^,]+), ([^,•]*[^\s•])( • (\d+)°F? (.+))?")
+ADDRESS_PATTERN_STREET = re.compile("([^,]+), ([^,]+), ([^,]+), ([^,•]*[^\s•])( • (\d+)°F? (.+))?")
+ADDRESS_PATTERN_CITY = re.compile("([^,]+), ([^,]+), ([^,•]*[^\s•])( • (\d+)°F? (.+))?")
+ADDRESS_PATTERN_PLACENAME = re.compile("(\d+)?\s*(.+)")
+
+DAYONE_MOMENT_PATTERN = re.compile("(.*)!\[\]\(dayone-moment:[^)]+\)(.*)", 
+    flags=re.DOTALL) #Need to match across lines
+
 # PUNCT_TOKENS = [',', '.', '(', ')', '!', '$', '%', '?', "'", '"']
 PUNCT_PATTERN = re.compile(",|\.|\(|\)|!|\$|%|\?|\"|“|”")
 NON_PERSONS = frozenset(["Anyway", "Had", "Lots", "Space", "How", "Molten", "Artichoke", "Afterward",
@@ -76,6 +106,7 @@ NON_PERSONS = frozenset(["Anyway", "Had", "Lots", "Space", "How", "Molten", "Art
 
 sid = SentimentIntensityAnalyzer()
 
+
 class EntryEncoder(json.JSONEncoder):
     def default(self, obj):
         if isinstance(obj, Entry) or isinstance(obj, Location) or isinstance(obj, Weather):
@@ -85,18 +116,53 @@ class EntryEncoder(json.JSONEncoder):
         return json.JSONEncoder.default(self, obj)
 
 class Entry:
-    def __init__(self, text, header, footer):
-        self.timestamp = Entry.parseTimestamp(header)
-        self.loc, self.weather = Entry.parseLoc(footer)
-        # self.text = text #TODO: example sentences?
+    def __init__(self, timestamp, loc, weather, text):
+        self.timestamp = timestamp
+        self.loc = loc
+        self.weather = weather
         self.tokens = Entry.tokenize(text)
         self.wordCounts = Entry.countWords(self.tokens)
         self.length = len(self.tokens)
         self.namedEntities = Entry.extractNamedEntities(text)
-        self.sentiment = self.extractSentenceSentiment(text)
+        self.sentiment = self.extractSentenceSentiment(text)  
+
+        # self.timestamp = Entry.parseTimestamp(header)
+        # self.loc, self.weather = Entry.parseLoc(footer)
+        # # self.text = text #TODO: example sentences?
+        # self.tokens = Entry.tokenize(text)
+        # self.wordCounts = Entry.countWords(self.tokens)
+        # self.length = len(self.tokens)
+        # self.namedEntities = Entry.extractNamedEntities(text)
+        # self.sentiment = self.extractSentenceSentiment(text)
         #TODO: S
         # self.sentences = nltk.tokenize. TODO
         # Timestamp is in (weekday, M, D, Y, military time) format
+
+    @classmethod
+    def fromString(cls, text, header, footer):
+        timestamp = Entry.parseTimestamp(header)
+        loc, weather = Entry.parseLoc(footer)
+        return cls(timestamp, loc, weather, text)
+
+    @classmethod
+    def fromJSON(cls, json_object):
+
+        # timestamp = datetime.datetime(json_object["creationDate"])
+        timestamp = json_object["creationDate"]
+
+        if "location" in json_object:
+            loc = Location.fromJSON(json_object["location"])
+        else:
+            loc = None
+
+        if "weather" in json_object:
+            weather = Weather.fromJSON(json_object["weather"])
+        else:
+            weather = None
+
+        text = Entry.parseTextFromJSON(json_object["text"])
+
+        return cls(timestamp, loc, weather, text) #TODO: strip dayone-moment
 
     def getTimestamp(self):
         """
@@ -108,7 +174,7 @@ class Entry:
         return len(self.tokens)
 
     def __str__(self):
-        return "Timestamp: {}\Counts: {}\nLocation: {}".format(self.timestamp, self.word_counts, self.loc)
+        return "Timestamp: {}\nCounts: {}\nLocation: {}".format(self.timestamp, self.wordCounts, self.loc)
 
     @staticmethod
     def getMonthNum(name):
@@ -135,6 +201,32 @@ class Entry:
                 counts[word] = {"count": 1, 
                 "pos": token["pos"], "sentiment": {"pos": 0, "neu": 0, "neg": 0}}
         return counts
+
+    @staticmethod
+    def parseTextFromJSON(text):
+        """
+        Strips dayone-moment tags from input text 
+
+        text utf-8 encoded text string
+        """
+        match = DAYONE_MOMENT_PATTERN.match(text)
+
+        if match:
+            # Exactly one of match groups 1 and 3 should be None and one should be text
+            if match.group(1) == "":
+                if match.group(2) == "":
+                    raise RuntimeError("Found empty text for entry: {}".format(text))
+                else:
+                    text = match.group(2)
+            else:
+                if not match.group(2) == "":
+                    raise RuntimeError(
+                        """Found multiple texts around moment tag for entry: {}\nGroup 1: {}\nGroup 2:{}""".format(
+                            text, len(match.group(1)), match.group(2)))
+                else:
+                    text = match.group(1)
+
+        return text.encode('utf-8')
 
     @staticmethod
     def parseLoc(line):
@@ -220,6 +312,17 @@ class Weather:
         self.temp = temp
         self.conditions = conditions
 
+    @classmethod
+    def fromJSON(cls, json_object):
+        return cls(
+            Weather.celsiusToFahrenheit(json_object["temperatureCelsius"]),
+            json_object["conditionsDescription"])
+
+    @staticmethod
+    def celsiusToFahrenheit(celsiusTemp):
+        fahrenheitTemp = (9.0 / 5) * celsiusTemp + 32
+        return int(round(fahrenheitTemp ,0))
+
 class Location:
     def __init__(self, match, entries = 5):
         if entries == 5:
@@ -241,12 +344,45 @@ class Location:
             self.region = match.group(2)
             self.country = match.group(3)
 
+    def __init__(self, placeName, city, region, country):
+        self.num, self.street = Location.splitPlaceName(placeName)
+        self.city = city
+        self.region = region
+        self.country = country
+
+    @classmethod
+    def fromJSON(cls, json_object):
+        return cls(
+            json_object["placeName"].encode('utf-8'), 
+            json_object["localityName"].encode('utf-8'),
+            json_object["administrativeArea"].encode('utf-8'),
+            json_object["country"].encode('utf-8'))
+
     def getType(self):
         return self.type
 
     def __str__(self):
         return "Number: {}\nStreet:{}\nCity:{}\nRegion:{}\nCountry:{}".format(
             self.num, self.street, self.city, self.region, self.country)
+
+    @staticmethod
+    def splitPlaceName(placeName):
+        # TODO: Extend regex to match addresses of the form 228-232 Street Name
+        match = ADDRESS_PATTERN_PLACENAME.match(placeName)
+        if match:
+            return (match.group(1), match.group(2)) #TODO: test
+        else:
+            return (None, None)
+
+def parseJSON(name):
+    with open(name, 'r') as read_file:
+        entries = []
+        data = json.loads(read_file.read())
+        for entry in data["entries"]:
+            entries.append(Entry.fromJSON(entry))
+
+    outfile = open('parsed_entries.json', "wb")
+    json.dump(entries, outfile, cls=EntryEncoder)
 
 def parseFile(name):
     with open(name, 'r') as f:
@@ -261,7 +397,7 @@ def parseFile(name):
                 if curHeader:
                     buf = buf[0:buf.find(prevLine)]
                     # print "Header: {}\nFooter: {}".format(curHeader.group(0), prevLine)
-                    entries.append(Entry(buf, curHeader, prevLine))
+                    entries.append(Entry.fromString(buf, curHeader, prevLine))
                 curHeader = header
                 buf = ""
                 Footer = ""
@@ -369,9 +505,14 @@ def main():
     #     entries = pickle.load(f)
     #     for entry in entries: print entry
     # parseFile("problemChildren.txt")
-    # parseFile("all-entries-2017-04-30.txt")
+    # parseFile("testText.txt")
+    # parseFile("all-entries-2018-03-09.txt")
     # generateNGrams("smallTest.txt")
-    # generateNGrams("all-entries-2017-04-30.txt")
-    processHealthData("Health Data.csv")
+    # generateNGrams("all-entries-2018-03-09.txt")
+    # processHealthData("Health Data.csv")
+
+    parseJSON("all-entries-6-18-18.json")
+    # generateNGrams("all-entries-2018-03-09.txt")
+
 
 if __name__ == '__main__': main()
